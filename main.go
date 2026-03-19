@@ -55,11 +55,10 @@ func main() {
 	sourceDir := ""
 	force := false
 	dryRun := false
-	processDirectory := true
-	processArchive := true
+	disableDirectory := true
+	disableArchive := true
 
 	cmd := &cli.Command{
-		Name:  "archive",
 		Usage: "Import assets from subdirectories and archives file in a directory.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -67,12 +66,14 @@ func main() {
 				Value:       "warn",
 				Usage:       "minimum log-level on display (debug, info, warn, error).",
 				Destination: &displayLogLevelStr,
+				Category:    "Logging",
 			},
 			&cli.StringFlag{
 				Name:        "file-log",
 				Value:       "info",
 				Usage:       "minimum log-level in log file (debug, info, warn, error).",
 				Destination: &fileLogLevelStr,
+				Category:    "Logging",
 			},
 			&cli.StringFlag{
 				Name:        "profile",
@@ -98,18 +99,21 @@ func main() {
 				Value:       false,
 				Usage:       "processing directory without actually creating assets.",
 				Destination: &dryRun,
+				Category:    "Processing",
 			},
 			&cli.BoolFlag{
-				Name:        "process-directory",
-				Value:       true,
-				Usage:       "process media files in directories.",
-				Destination: &processDirectory,
+				Name:        "disable-directory",
+				Value:       false,
+				Usage:       "disable processing media files in directories.",
+				Destination: &disableDirectory,
+				Category:    "Processing",
 			},
 			&cli.BoolFlag{
-				Name:        "process-archive",
-				Value:       true,
-				Usage:       "process media files in archive files.",
-				Destination: &processArchive,
+				Name:        "disable-archive",
+				Value:       false,
+				Usage:       "disable processing media files in archive files.",
+				Destination: &disableArchive,
+				Category:    "Processing",
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -150,8 +154,8 @@ func main() {
 				server,
 				sourceDir,
 				force,
-				processDirectory,
-				processArchive,
+				!disableDirectory,
+				!disableArchive,
 			)
 		},
 	}
