@@ -55,6 +55,8 @@ func main() {
 	sourceDir := ""
 	force := false
 	dryRun := false
+	processDirectory := true
+	processArchive := true
 
 	cmd := &cli.Command{
 		Name:  "archive",
@@ -97,6 +99,18 @@ func main() {
 				Usage:       "processing directory without actually creating assets.",
 				Destination: &dryRun,
 			},
+			&cli.BoolFlag{
+				Name:        "process-directory",
+				Value:       true,
+				Usage:       "process media files in directories.",
+				Destination: &processDirectory,
+			},
+			&cli.BoolFlag{
+				Name:        "process-archive",
+				Value:       true,
+				Usage:       "process media files in archive files.",
+				Destination: &processArchive,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			err = SetupLog(
@@ -136,6 +150,8 @@ func main() {
 				server,
 				sourceDir,
 				force,
+				processDirectory,
+				processArchive,
 			)
 		},
 	}
@@ -205,6 +221,9 @@ func Process(
 	server immich.ServerConfig,
 	sourceDir string,
 	force bool,
+	processDirectory bool,
+	processArchive bool,
+
 ) error {
 	var albums []immich.AlbumResponseDto
 	var err error
@@ -231,7 +250,7 @@ func Process(
 
 			var assetIds []string
 
-			archiveFilePath, err := filepath.Rel(sourceDir, path)
+			albumPath, err := filepath.Rel(sourceDir, path)
 			if err != nil {
 				slog.Error(
 					"failed to determine album name.",
@@ -240,13 +259,31 @@ func Process(
 				return nil
 			}
 
+			slog.Debug("processing path",
+				slog.String("path", path),
+				slog.String("albumPath", albumPath),
+			)
+
 			if d.IsDir() {
-				assetIds, err = directory.Process(server, sourceDir, d.Name())
+				if !processDirectory {
+					slog.Debug("skipping directory",
+						slog.String("path", path),
+					)
+					return nil
+				}
+				assetIds, err = directory.Process(server, sourceDir, albumPath)
 			} else {
 				if !archive.IsArchive(filepath.Ext(path)) {
 					return nil
 				}
-				assetIds, err = archive.Process(server, sourceDir, archiveFilePath, d.Name())
+				if !processArchive {
+					slog.Debug("skipping file",
+						slog.String("path", path),
+					)
+					return nil
+				}
+
+				assetIds, err = archive.Process(server, sourceDir, albumPath)
 			}
 
 			if err != nil {
@@ -257,15 +294,16 @@ func Process(
 				return nil
 			}
 
-			slog.Info("creating album", slog.String("name", archiveFilePath))
 			if len(assetIds) == 0 {
-				slog.Info(
+				slog.Debug(
 					"no assets uploaded. skip create album.",
+					slog.String("name", albumPath),
 				)
 				return nil
 			}
+			slog.Info("creating album", slog.String("name", albumPath))
 			createdAlbum, err := immich.CreateAlbum(
-				server, archiveFilePath, assetIds,
+				server, albumPath, assetIds,
 			)
 			if err != nil {
 				slog.Error("failed to create album", slog.String("error", err.Error()))

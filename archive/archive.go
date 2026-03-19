@@ -19,12 +19,11 @@ func Process(
 	server immich.ServerConfig,
 	sourceDir string,
 	albumPath string,
-	path string,
 ) (
 	assetIds []string,
 	err error,
 ) {
-	archiveFile, err := os.Open(path)
+	archiveFile, err := os.Open(filepath.Join(sourceDir, albumPath))
 	if err != nil {
 		err = fmt.Errorf("failed to open archive: %s. => %w.",
 			albumPath,
@@ -35,7 +34,7 @@ func Process(
 	defer archiveFile.Close()
 
 	ctx := context.Background()
-	err = WalkArchive(ctx, path, archiveFile,
+	err = WalkArchive(ctx, albumPath, archiveFile,
 		func(
 			ctx context.Context, filename string, f archives.FileInfo,
 		) error {

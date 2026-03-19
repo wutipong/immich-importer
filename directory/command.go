@@ -18,11 +18,18 @@ func Process(
 	assetIds []string,
 	err error,
 ) {
-	entries, err := os.ReadDir(path)
+
+	slog.Debug("processing directory",
+		slog.String("sourceDir", sourceDir),
+		slog.String("path", path),
+	)
+	entries, err := os.ReadDir(filepath.Join(sourceDir, path))
 	if err != nil {
 		err = fmt.Errorf("failed to read directory. => %w", err)
 		return
 	}
+
+	slog.Debug("directory entries", slog.Any("size", len(entries)))
 
 	files := slices.DeleteFunc(
 		entries,
@@ -30,26 +37,19 @@ func Process(
 			if d.IsDir() {
 				return true
 			}
-			if !immich.IsMediaFile(d.Name()) {
+			if !immich.IsMediaFile(filepath.Ext(d.Name())) {
 				return true
 			}
 			return false
 		},
 	)
 
-	archiveFilePath, err := filepath.Rel(sourceDir, path)
-	if err != nil {
-		err = fmt.Errorf(
-			"failed to determine album name. => %w",
-			err,
-		)
-		return
-	}
+	slog.Debug("media files", slog.Any("size", len(files)))
 
 	for _, file := range files {
 		slog.Info(
 			"creating asset",
-			slog.String("album", archiveFilePath),
+			slog.String("album", path),
 			slog.String("entry", file.Name()),
 		)
 
@@ -77,15 +77,15 @@ func Process(
 
 		asset, err := immich.PostAsset(
 			server,
-			archiveFilePath,
+			path,
 			file.Name(),
 			reader,
 			info.ModTime(),
 		)
 		if err != nil {
 			slog.Error("failed to upload asset",
-				slog.String("album", archiveFilePath),
-				slog.String("entry", reader.Name()),
+				slog.String("album", path),
+				slog.String("entry", file.Name()),
 				slog.String("error", err.Error()),
 			)
 			continue
