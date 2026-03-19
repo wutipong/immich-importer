@@ -5,22 +5,36 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	"log/slog"
 	"mime/multipart"
-	"net/url"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func PostAsset(
+	server ServerConfig,
 	archivePath string,
 	path string,
 	reader io.Reader,
 	modDate time.Time,
-	url *url.URL,
-	apiKey string,
 ) (result AssetMediaResponseDto, err error) {
+	if server.DryRun {
+		slog.Debug(
+			"Dry run: skipping asset upload",
+			slog.String("path", path),
+		)
+		result = AssetMediaResponseDto{
+			ID:     uuid.NewString(),
+			Status: "created",
+		}
+
+		return
+	}
+
 	assetFileName := filepath.Join(archivePath, path)
 
 	h := fnv.New64()
@@ -48,8 +62,8 @@ func PostAsset(
 	}
 	_ = writer.Close()
 
-	return DoRequestWithResult[AssetMediaResponseDto](
-		"POST", url.JoinPath("/api/assets"), &body, writer.FormDataContentType(), apiKey,
+	return DoRequestWithReturnObject[AssetMediaResponseDto](
+		"POST", server, "/api/assets", &body, writer.FormDataContentType(),
 	)
 }
 

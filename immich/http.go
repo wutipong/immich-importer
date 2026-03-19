@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 )
 
-func Post[R any](url *url.URL, data any, apiKey string) (result R, err error) {
+func Post[R any](server ServerConfig, path string, data any) (result R, err error) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return result, err
@@ -17,17 +16,17 @@ func Post[R any](url *url.URL, data any, apiKey string) (result R, err error) {
 
 	body := bytes.NewBuffer(jsonData)
 
-	return DoRequestWithResult[R]("POST", url, body, "application/json", apiKey)
+	return DoRequestWithReturnObject[R]("POST", server, path, body, "application/json")
 }
 
-func DoRequestWithResult[R any](
+func DoRequestWithReturnObject[R any](
 	method string,
-	url *url.URL,
+	server ServerConfig,
+	path string,
 	body io.Reader,
 	contentType string,
-	apiKey string,
 ) (result R, err error) {
-	resp, err := DoRequest(method, url, body, contentType, apiKey)
+	resp, err := DoRequest(method, server, path, body, contentType)
 	if err != nil {
 		return
 	}
@@ -40,7 +39,11 @@ func DoRequestWithResult[R any](
 	}
 
 	if resp.StatusCode >= 300 {
-		err = fmt.Errorf("request failed with status code %d: %s", resp.StatusCode, string(respBuff))
+		err = fmt.Errorf(
+			"request failed with status code %d: %s",
+			resp.StatusCode,
+			string(respBuff),
+		)
 		return
 	}
 
@@ -53,16 +56,16 @@ func DoRequestWithResult[R any](
 
 func DoRequest(
 	method string,
-	url *url.URL,
+	server ServerConfig,
+	path string,
 	body io.Reader,
 	contentType string,
-	apiKey string,
 ) (resp *http.Response, err error) {
-	req, err := http.NewRequest(method, url.String(), body)
+	req, err := http.NewRequest(method, server.URL.JoinPath(path).String(), body)
 	if err != nil {
 		return
 	}
-	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("x-api-key", server.APIKey)
 
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
@@ -71,15 +74,21 @@ func DoRequest(
 	return http.DefaultClient.Do(req)
 }
 
-func Get[R any](url *url.URL, apiKey string) (result R, err error) {
-	return DoRequestWithResult[R]("GET", url, nil, "", apiKey)
+func Get[R any](server ServerConfig, path string) (result R, err error) {
+	return DoRequestWithReturnObject[R]("GET", server, path, nil, "")
 }
 
-func Put[R any](url *url.URL, request any, apiKey string) (result R, err error) {
+func Put[R any](server ServerConfig, path string, request any) (result R, err error) {
 	body, err := json.Marshal(request)
 	if err != nil {
 		return
 	}
 
-	return DoRequestWithResult[R]("PUT", url, bytes.NewReader(body), "application/json", apiKey)
+	return DoRequestWithReturnObject[R](
+		"PUT",
+		server,
+		path,
+		bytes.NewReader(body),
+		"application/json",
+	)
 }

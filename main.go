@@ -16,6 +16,7 @@ import (
 	"github.com/wutipong/immich-importer/archive"
 	"github.com/wutipong/immich-importer/config"
 	"github.com/wutipong/immich-importer/directory"
+	"github.com/wutipong/immich-importer/immich"
 )
 
 func main() {
@@ -48,137 +49,94 @@ func main() {
 
 	configPath := filepath.Join(homeDir, ".immich-importer", "config.yaml")
 
+	displayLogLevelStr := "warn"
+	fileLogLevelStr := "info"
+	profile := "default"
+	sourceDir := ""
+	force := false
+	dryRun := false
+
 	cmd := &cli.Command{
-		Usage: "assets importer for immich.",
-		Commands: []*cli.Command{
-			{
-				Name:  "archive",
-				Usage: "Import assets from archives file in a directory.",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "display-log-level",
-						Value: "warn",
-						Usage: "minimum log level on display",
-					},
-					&cli.StringFlag{
-						Name:  "file-log-level",
-						Value: "info",
-						Usage: "minimum log level in log file.",
-					},
-					&cli.StringFlag{
-						Name:  "profile",
-						Value: "default",
-						Usage: "profile of immich server.",
-					},
-					&cli.StringFlag{
-						Name:    "source",
-						Aliases: []string{"src"},
-						Usage:   "source directory.",
-					},
-					&cli.BoolFlag{
-						Name:  "force",
-						Usage: "force processing the archive file even if an album with the same name exists.",
-					},
-				},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					err = SetupLog(
-						cmd.Flags[0].Get().(string),
-						cmd.Flags[1].Get().(string),
-						os.Stdout, logFile,
-					)
-					if err != nil {
-						return fmt.Errorf("unable to setup logging system. => %w", err)
-					}
-
-					c, err := config.LoadConfig(cmd.Flags[2].Get().(string), configPath)
-					if err != nil {
-						return fmt.Errorf("unable to load configuration. => %w", err)
-					}
-
-					slog.Info("Immich instance",
-						slog.String("url", c.ImmichURL),
-						slog.String("api_key",
-							strings.Repeat("*", len(c.ImmichAPIKey)),
-						),
-					)
-
-					url, err := url.Parse(c.ImmichURL)
-					if err != nil {
-						return fmt.Errorf("invalid immich url. => %w", err)
-					}
-
-					return archive.Process(
-						url,
-						c.ImmichAPIKey,
-						cmd.Flags[3].Get().(string),
-						cmd.Flags[4].Get().(bool),
-					)
-				},
+		Name:  "archive",
+		Usage: "Import assets from subdirectories and archives file in a directory.",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "display-log",
+				Value:       "warn",
+				Usage:       "minimum log-level on display (debug, info, warn, error).",
+				Destination: &displayLogLevelStr,
 			},
-			{
-				Name:  "directory",
-				Usage: "Import assets from subdirectories of a directory.",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "display-log-level",
-						Value: "warn",
-						Usage: "minimum log level on display",
-					},
-					&cli.StringFlag{
-						Name:  "file-log-level",
-						Value: "info",
-						Usage: "minimum log level in log file.",
-					},
-					&cli.StringFlag{
-						Name:  "profile",
-						Value: "default",
-						Usage: "profile of immich server.",
-					},
-					&cli.StringFlag{
-						Name:    "source",
-						Aliases: []string{"src"},
-						Usage:   "source directory.",
-					},
-					&cli.BoolFlag{
-						Name:  "force",
-						Usage: "force processing the archive file even if an album with the same name exists.",
-					},
-				},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					err = SetupLog(
-						cmd.Flags[0].Get().(string),
-						cmd.Flags[1].Get().(string),
-						os.Stdout, logFile,
-					)
-					if err != nil {
-						return fmt.Errorf("unable to setup logging system. => %w", err)
-					}
-
-					c, err := config.LoadConfig(cmd.Flags[2].Get().(string), configPath)
-					if err != nil {
-						return fmt.Errorf("unable to load configuration. => %w", err)
-					}
-
-					slog.Info("Immich instance",
-						slog.String("url", c.ImmichURL),
-						slog.String("api_key",
-							strings.Repeat("*", len(c.ImmichAPIKey)),
-						),
-					)
-
-					url, err := url.Parse(c.ImmichURL)
-					if err != nil {
-						return fmt.Errorf("invalid immich url. => %w", err)
-					}
-
-					return directory.Process(
-						url,
-						c.ImmichAPIKey,
-						cmd.Flags[3].Get().(string),
-						cmd.Flags[4].Get().(bool),
-					)
-				},
+			&cli.StringFlag{
+				Name:        "file-log",
+				Value:       "info",
+				Usage:       "minimum log-level in log file (debug, info, warn, error).",
+				Destination: &fileLogLevelStr,
 			},
+			&cli.StringFlag{
+				Name:        "profile",
+				Value:       "default",
+				Usage:       "profile of immich server.",
+				Destination: &profile,
+			},
+			&cli.StringFlag{
+				Name:        "source",
+				Aliases:     []string{"src"},
+				Usage:       "source directory.",
+				Destination: &sourceDir,
+				Required:    true,
+			},
+			&cli.BoolFlag{
+				Name:        "force",
+				Value:       false,
+				Usage:       "force processing album even if an album with the same name exists.",
+				Destination: &force,
+			},
+			&cli.BoolFlag{
+				Name:        "dry-run",
+				Value:       false,
+				Usage:       "processing directory without actually creating assets.",
+				Destination: &dryRun,
+			},
+		},
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			err = SetupLog(
+				displayLogLevelStr,
+				fileLogLevelStr,
+				os.Stdout,
+				logFile,
+			)
+			if err != nil {
+				return fmt.Errorf("unable to setup logging system. => %w", err)
+			}
+
+			c, err := config.LoadConfig(cmd.Flags[2].Get().(string), configPath)
+			if err != nil {
+				return fmt.Errorf("unable to load configuration. => %w", err)
+			}
+
+			slog.Info("Immich instance",
+				slog.String("url", c.ImmichURL),
+				slog.String("api_key",
+					strings.Repeat("*", len(c.ImmichAPIKey)),
+				),
+			)
+
+			url, err := url.Parse(c.ImmichURL)
+			if err != nil {
+				return fmt.Errorf("invalid immich url. => %w", err)
+			}
+
+			server := immich.ServerConfig{
+				URL:    url,
+				APIKey: c.ImmichAPIKey,
+				DryRun: dryRun,
+			}
+
+			return Process(
+				server,
+				sourceDir,
+				force,
+			)
 		},
 	}
 
@@ -241,4 +199,83 @@ func SetupLog(
 	))
 
 	return nil
+}
+
+func Process(
+	server immich.ServerConfig,
+	sourceDir string,
+	force bool,
+) error {
+	var albums []immich.AlbumResponseDto
+	var err error
+
+	if !force {
+		albums, err = immich.GetAlbums(server)
+		if err != nil {
+			err = fmt.Errorf("unable to retrieved existing albums. => %w", err)
+			return err
+		}
+		slog.Debug("albums", slog.Any("existing albums", albums))
+	}
+	err = filepath.WalkDir(sourceDir,
+		func(path string, d os.DirEntry, err error,
+		) error {
+			if err != nil {
+				slog.Warn(
+					"failed to access path. skipping.",
+					slog.String("path", path),
+					slog.String("error", err.Error()),
+				)
+				return nil
+			}
+
+			var assetIds []string
+
+			archiveFilePath, err := filepath.Rel(sourceDir, path)
+			if err != nil {
+				slog.Error(
+					"failed to determine album name.",
+					slog.String("error", err.Error()),
+				)
+				return nil
+			}
+
+			if d.IsDir() {
+				assetIds, err = directory.Process(server, sourceDir, d.Name())
+			} else {
+				if !archive.IsArchive(filepath.Ext(path)) {
+					return nil
+				}
+				assetIds, err = archive.Process(server, sourceDir, archiveFilePath, d.Name())
+			}
+
+			if err != nil {
+				slog.Error(
+					"failed upload assets.",
+					slog.String("error", err.Error()),
+				)
+				return nil
+			}
+
+			slog.Info("creating album", slog.String("name", archiveFilePath))
+			if len(assetIds) == 0 {
+				slog.Info(
+					"no assets uploaded. skip create album.",
+				)
+				return nil
+			}
+			createdAlbum, err := immich.CreateAlbum(
+				server, archiveFilePath, assetIds,
+			)
+			if err != nil {
+				slog.Error("failed to create album", slog.String("error", err.Error()))
+				return nil
+			}
+
+			slog.Info("created album", slog.Any("album", createdAlbum))
+
+			return nil
+		})
+
+	return err
 }

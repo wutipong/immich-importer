@@ -3,15 +3,29 @@ package immich
 import (
 	"fmt"
 	"log/slog"
-	"net/url"
+	"path"
+
+	"github.com/google/uuid"
 )
 
-func GetAlbums(url *url.URL, apiKey string) (albums []AlbumResponseDto, err error) {
-	return Get[[]AlbumResponseDto](url.JoinPath("/api/albums"), apiKey)
+func GetAlbums(server ServerConfig) (
+	albums []AlbumResponseDto,
+	err error,
+) {
+	if server.DryRun {
+		slog.Debug("Dry run: return empty album list")
+		return []AlbumResponseDto{}, nil
+	}
+	return Get[[]AlbumResponseDto](server, "/api/albums")
 }
 
-func DeleteEmptyAlbums(url *url.URL, apiKey string) error {
-	albums, err := GetAlbums(url, apiKey)
+func DeleteEmptyAlbums(server ServerConfig) error {
+	if server.DryRun {
+		slog.Debug("Dry run: skipping empty album deletion")
+		return nil
+	}
+
+	albums, err := GetAlbums(server)
 	if err != nil {
 		return fmt.Errorf("failed to get albums: %w", err)
 	}
@@ -22,35 +36,66 @@ func DeleteEmptyAlbums(url *url.URL, apiKey string) error {
 			continue
 		}
 
-		slog.Debug("Deleting album", slog.String("name", album.AlbumName), slog.String("id", album.Id))
-		err = DeleteAlbum(album.Id, url, apiKey)
+		slog.Debug("Deleting album",
+			slog.String("name", album.AlbumName),
+			slog.String("id", album.Id),
+		)
+		err = DeleteAlbum(server, album.Id)
 		if err != nil {
-			return fmt.Errorf("failed to delete album '%s': %w", album.AlbumName, err)
+			return fmt.Errorf("failed to delete album '%s': %w",
+				album.AlbumName, err)
 		}
 	}
 	return nil
 }
 
-func DeleteAlbum(id string, url *url.URL, apiKey string) error {
-	resp, err := DoRequest("DELETE", url.JoinPath("api", "albums", id), nil, "", apiKey)
+func DeleteAlbum(server ServerConfig, id string) error {
+	if server.DryRun {
+		slog.Debug("Dry run: skipping album deletion",
+			slog.String("id", id),
+		)
+		return nil
+	}
+
+	resp, err := DoRequest(
+		"DELETE", server, path.Join("api", "albums", id), nil, "")
 	if err != nil {
 		return err
 	}
 
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("request failed with status code %d: %s", resp.StatusCode, resp.Status)
+		return fmt.Errorf("request failed with status code %d: %s",
+			resp.StatusCode,
+			resp.Status,
+		)
 	}
 
 	return nil
 }
 
-func CreateAlbum(url *url.URL, apiKey string, albumName string, assetIds []string) (CreateAlbumDto, error) {
+func CreateAlbum(server ServerConfig, albumName string, assetIds []string) (
+	album CreateAlbumDto,
+	err error,
+) {
+	if server.DryRun {
+		slog.Debug("Dry run: return fake album",
+			slog.String("name", albumName),
+			slog.Int("assetCount", len(assetIds)),
+		)
+
+		album = CreateAlbumDto{
+			ID:        uuid.NewString(),
+			AlbumName: albumName,
+		}
+		return
+	}
+
 	return Post[CreateAlbumDto](
-		url.JoinPath("/api/albums"),
+		server,
+		"/api/albums",
 		CreateAlbumRequest{
 			AlbumName: albumName,
 			AssetIDs:  assetIds,
 		},
-		apiKey,
 	)
 }

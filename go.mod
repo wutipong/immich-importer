@@ -3,6 +3,7 @@ module github.com/wutipong/immich-importer
 go 1.26
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/mholt/archives v0.1.5
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d
