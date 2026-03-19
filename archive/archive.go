@@ -23,6 +23,9 @@ func Process(
 	assetIds []string,
 	err error,
 ) {
+	if !IsArchive(filepath.Ext(albumPath)) {
+		return
+	}
 	archiveFile, err := os.Open(filepath.Join(sourceDir, albumPath))
 	if err != nil {
 		err = fmt.Errorf("failed to open archive: %s. => %w.",
@@ -162,6 +165,7 @@ func WalkArchive(
 			slog.Warn(
 				"archive contains nested archived. manually extraction required.",
 				slog.String("filename", filename),
+				slog.String("archive", archivePath),
 			)
 		}
 

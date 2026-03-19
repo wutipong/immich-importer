@@ -281,9 +281,6 @@ func Process(
 				}
 				assetIds, err = directory.Process(server, sourceDir, albumPath)
 			} else {
-				if !archive.IsArchive(filepath.Ext(path)) {
-					return nil
-				}
 				if !processArchive {
 					slog.Debug("skipping file",
 						slog.String("path", path),
