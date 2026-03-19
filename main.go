@@ -25,8 +25,10 @@ func main() {
 		TimeFormat: time.Kitchen,
 	})))
 
+	t := time.Now().Format("20060102_150405")
+
 	logFile, err := os.OpenFile(
-		"immich-importer.log",
+		fmt.Sprintf("immich-importer.%s.log", t),
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
 		0644,
 	)
@@ -37,6 +39,8 @@ func main() {
 		)
 		return
 	}
+
+	defer logFile.Close()
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
