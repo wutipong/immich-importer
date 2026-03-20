@@ -23,10 +23,17 @@ jobs:
 
       - name: Build immich-importer
         run: |
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            ext=".exe"
+          else
+            ext=""
+          fi
+
           mkdir "immich-importer-${{ matrix.os }}-${{ matrix.arch }}"
-          out="immich-importer-${{ matrix.os }}-${{ matrix.arch }}"
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o "$out" ./...
-          echo "ASSET_PATH=$out" >> $GITHUB_ENV
+          outdir="immich-importer-${{ matrix.os }}-${{ matrix.arch }}"
+          outfile="$outdir/immich-importer${ext}"
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o "$outdir" ./...
+          echo "ASSET_PATH=$outfile" >> $GITHUB_ENV
 
       - name: Upload release artifact
         uses: actions/upload-release-asset@v1
