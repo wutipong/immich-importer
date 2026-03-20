@@ -32,11 +32,11 @@ jobs:
             ext=""
           fi
 
-          mkdir "immich-importer-${{ matrix.os }}-${{ matrix.arch }}"
-          outdir="immich-importer-${{ matrix.os }}-${{ matrix.arch }}"
-          outfile="$outdir/immich-importer${ext}"
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o "$outdir" ./...
-          echo "ASSET_PATH=$outfile" >> $GITHUB_ENV
+          outfile="immich-importer${ext}"
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o "$outfile" .
+          zipfile="immich-importer-${{ matrix.os }}-${{ matrix.arch }}.zip"
+          zip "$zipfile" "$outfile"
+          echo "ASSET_PATH=$zipfile" >> $GITHUB_ENV
 
       - name: Upload release artifact
         uses: softprops/action-gh-release@v1
