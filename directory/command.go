@@ -49,7 +49,7 @@ func Process(
 	for _, file := range files {
 		slog.Info(
 			"creating asset",
-			slog.String("album", path),
+			slog.String("path", path),
 			slog.String("entry", file.Name()),
 		)
 
@@ -63,7 +63,7 @@ func Process(
 			return
 		}
 
-		reader, e := os.Open(filepath.Join(path, file.Name()))
+		reader, e := os.Open(filepath.Join(sourceDir, path, file.Name()))
 		if err != nil {
 			err = fmt.Errorf(
 				"failed to open image file %s. => %w",
