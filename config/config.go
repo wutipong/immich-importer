@@ -2,9 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
-
-	"go.yaml.in/yaml/v4"
 )
 
 type Config struct {
@@ -13,16 +10,9 @@ type Config struct {
 }
 
 func LoadConfig(profile string, path string) (config Config, err error) {
-	file, err := os.Open(path)
+	configMap, err := OpenConfigMap(path)
 	if err != nil {
-		return
-	}
-	defer file.Close()
-
-	// Parse the YAML file into the Config struct
-	configMap := make(map[string]Config)
-	err = yaml.NewDecoder(file).Decode(&configMap)
-	if err != nil {
+		err = fmt.Errorf("unable to open configuration file: %w", err)
 		return
 	}
 
