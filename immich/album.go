@@ -99,3 +99,31 @@ func CreateAlbum(server ServerConfig, albumName string, assetIds []string) (
 		},
 	)
 }
+
+func AddAssetsToAlbum(server ServerConfig, albumIds []string, assetIds []string) error {
+	if server.DryRun {
+		slog.Debug("Dry run: skipping adding assets to album",
+			slog.Any("albumIds", albumIds),
+			slog.Int("assetCount", len(assetIds)),
+		)
+		return nil
+	}
+
+	resp, err := Post[AddAssetsToAlbumResponse](
+		server,
+		path.Join("api", "albums", "assets"),
+		AddAssetsToAlbumRequest{
+			AlbumIDS: albumIds,
+			AssetIDs: assetIds,
+		},
+	)
+
+	if err != nil {
+		return fmt.Errorf("unable to add assets to albums: %w", err)
+	}
+
+	if !resp.Success {
+		return fmt.Errorf("server error: %s", resp.Error)
+	}
+	return err
+}

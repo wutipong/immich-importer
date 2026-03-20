@@ -273,9 +273,18 @@ func Process(
 				slog.String("albumPath", albumPath),
 			)
 
-			if !force && slices.ContainsFunc(albums, func(a immich.AlbumResponseDto) bool {
-				return a.AlbumName == albumPath
-			}) {
+			matchingAlbums := slices.DeleteFunc(slices.Clone(albums),
+				func(album immich.AlbumResponseDto) bool {
+					return album.AlbumName != albumPath
+				})
+
+			slog.Debug("matching albums",
+				slog.Any("album", albumPath),
+				slog.Any("existing", albums),
+				slog.Any("matchalbums", matchingAlbums),
+			)
+
+			if !force && len(matchingAlbums) > 0 {
 				slog.Warn(
 					"album already exists. skipping.",
 					slog.String("name", albumPath),
@@ -317,6 +326,28 @@ func Process(
 				)
 				return nil
 			}
+
+			if len(matchingAlbums) > 0 {
+				slog.Info(
+					"album already exists. update existing album.",
+					slog.String("name", albumPath),
+				)
+
+				var albumIds []string
+				for _, album := range matchingAlbums {
+					albumIds = append(albumIds, album.Id)
+				}
+
+				err = immich.AddAssetsToAlbum(server, albumIds, assetIds)
+				if err != nil {
+					slog.Error(
+						"failed to add assets to album",
+						slog.String("error", err.Error()),
+					)
+				}
+				return nil
+			}
+
 			slog.Info("creating album", slog.String("name", albumPath))
 			createdAlbum, err := immich.CreateAlbum(
 				server, albumPath, assetIds,

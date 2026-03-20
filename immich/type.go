@@ -18,6 +18,16 @@ type CreateAlbumDto struct {
 	ID        string `json:"id"`
 }
 
+type AddAssetsToAlbumRequest struct {
+	AlbumIDS []string `json:"albumIds"`
+	AssetIDs []string `json:"assetIds"`
+}
+
+type AddAssetsToAlbumResponse struct {
+	Error   string `json:"error"`
+	Success bool   `json:"success"`
+}
+
 type AssetMediaRequest struct {
 	DeviceAssetId  string    `json:"deviceAssetId"`
 	DeviceId       string    `json:"deviceId"`
