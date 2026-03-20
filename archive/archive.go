@@ -29,7 +29,7 @@ func Process(
 	}
 	archiveFile, err := os.Open(filepath.Join(sourceDir, albumPath))
 	if err != nil {
-		err = fmt.Errorf("failed to open archive: %s. => %w.",
+		err = fmt.Errorf("failed to open archive: %s: %w.",
 			albumPath,
 			err,
 		)

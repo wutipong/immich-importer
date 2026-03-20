@@ -25,7 +25,7 @@ func Process(
 	)
 	entries, err := os.ReadDir(filepath.Join(sourceDir, path))
 	if err != nil {
-		err = fmt.Errorf("failed to read directory. => %w", err)
+		err = fmt.Errorf("failed to read directory: %w", err)
 		return
 	}
 
@@ -56,7 +56,7 @@ func Process(
 		info, e := file.Info()
 		if e != nil {
 			err = fmt.Errorf(
-				"Unable to read image file propery: %s. => %w",
+				"Unable to read image file propery: %s: %w",
 				file.Name(),
 				e,
 			)
@@ -66,7 +66,7 @@ func Process(
 		reader, e := os.Open(filepath.Join(sourceDir, path, file.Name()))
 		if err != nil {
 			err = fmt.Errorf(
-				"failed to open image file %s. => %w",
+				"failed to open image file %s: %w",
 				file.Name(),
 				e,
 			)

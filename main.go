@@ -129,12 +129,12 @@ func main() {
 				logFile,
 			)
 			if err != nil {
-				return fmt.Errorf("unable to setup logging system. => %w", err)
+				return fmt.Errorf("unable to setup logging system: %w", err)
 			}
 
 			c, err := config.LoadConfig(cmd.Flags[2].Get().(string), configPath)
 			if err != nil {
-				return fmt.Errorf("unable to load configuration. => %w", err)
+				return fmt.Errorf("unable to load configuration: %w", err)
 			}
 
 			slog.Info("Immich instance",
@@ -146,7 +146,7 @@ func main() {
 
 			url, err := url.Parse(c.ImmichURL)
 			if err != nil {
-				return fmt.Errorf("invalid immich url. => %w", err)
+				return fmt.Errorf("invalid immich url: %w", err)
 			}
 
 			server := immich.ServerConfig{
@@ -201,13 +201,13 @@ func SetupLog(
 ) error {
 	fileLevel, err := ParseLogLevel(fileLogLevelStr)
 	if err != nil {
-		err = fmt.Errorf("unable to parse log level for log file. => %w", err)
+		err = fmt.Errorf("unable to parse log level for log file: %w", err)
 		return err
 	}
 
 	dispLevel, err := ParseLogLevel(dispLogLevelStr)
 	if err != nil {
-		err = fmt.Errorf("unable to parse log level for log file. => %w", err)
+		err = fmt.Errorf("unable to parse log level for log file: %w", err)
 		return err
 	}
 
@@ -240,7 +240,7 @@ func Process(
 	if !force {
 		albums, err = immich.GetAlbums(server)
 		if err != nil {
-			err = fmt.Errorf("unable to retrieved existing albums. => %w", err)
+			err = fmt.Errorf("unable to retrieved existing albums: %w", err)
 			return err
 		}
 		slog.Debug("albums", slog.Any("existing albums", albums))
