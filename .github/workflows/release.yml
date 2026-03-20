@@ -17,23 +17,24 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: '1.26'
 
       - name: Build immich-importer
+        id: build
         run: |
           outdir="immich-importer-${{ matrix.os }}-${{ matrix.arch }}"
           mkdir "$outdir"
           GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o "$outdir" ./...
           zipfile="$outdir.zip"
           zip -r "$zipfile" "$outdir"
-          echo "ASSET_PATH=$zipfile" >> $GITHUB_ENV
+          echo "asset_path=$zipfile" >> $GITHUB_OUTPUT
 
       - name: Upload release artifact
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.ASSET_PATH }}
+          files: ${{ steps.build.outputs.asset_path }}
