@@ -37,47 +37,8 @@ func Process(
 	}
 	defer archiveFile.Close()
 
-	ctx := context.Background()
-	err = WalkArchive(ctx, albumPath, archiveFile,
-		func(
-			ctx context.Context, filename string, f archives.FileInfo,
-		) error {
-			slog.Info(
-				"creating asset",
-				slog.String("archive", albumPath),
-				slog.String("entry", filename),
-			)
+	assetIds, err = WalkArchive(server, albumPath, archiveFile)
 
-			file, err := f.Open()
-			if err != nil {
-				slog.Error("failed to open archive entry",
-					slog.String("archive", albumPath),
-					slog.String("entry", filename),
-					slog.String("error", err.Error()),
-				)
-				return nil
-			}
-
-			defer file.Close()
-
-			asset, err := immich.PostAsset(
-				server,
-				albumPath, filename, file, f.ModTime())
-			if err != nil {
-				slog.Error("failed to oupload asset",
-					slog.String("archive", albumPath),
-					slog.String("entry", filename),
-					slog.String("error", err.Error()),
-				)
-				return nil
-			}
-
-			slog.Info("uploaded asset", slog.Any("asset", asset))
-
-			assetIds = append(assetIds, asset.ID)
-
-			return nil
-		})
 	return
 }
 
@@ -92,23 +53,21 @@ var archiveExtensions = []string{
 }
 
 func WalkArchive(
-	ctx context.Context,
+	server immich.ServerConfig,
 	archivePath string,
 	archive *os.File,
-	mediaProcessFn func(
-		ctx context.Context,
-		filename string,
-		f archives.FileInfo,
-	) error,
-) error {
+) (assetIds []string, err error) {
+	ctx := context.Background()
+
 	format, stream, err := archives.Identify(ctx, archivePath, archive)
 	if err != nil {
-		return err
+		return
 	}
 
 	extractor, ok := format.(archives.Extractor)
 	if !ok {
-		return fmt.Errorf("format does not support extraction")
+		err = fmt.Errorf("format does not support extraction")
+		return
 	}
 
 	detector := chardet.NewTextDetector()
@@ -172,11 +131,53 @@ func WalkArchive(
 			}
 
 			if immich.IsMediaFile(f.NameInArchive) {
-				return mediaProcessFn(ctx, filename, f)
+				asset, err := uploadAsset(server, archivePath, filename, f)
+				if err != nil {
+					return err
+				}
+
+				slog.Info("uploaded asset", slog.Any("asset", asset))
+
+				assetIds = append(assetIds, asset.ID)
+
 			}
 
 			return nil
 		})
 
-	return err
+	return assetIds, err
+}
+
+func uploadAsset(
+	server immich.ServerConfig,
+	archivePath string,
+	filename string,
+	f archives.FileInfo,
+) (asset immich.AssetMediaResponseDto, err error) {
+	slog.Info(
+		"creating asset",
+		slog.String("archive", archivePath),
+		slog.String("entry", filename),
+	)
+
+	file, err := f.Open()
+	if err != nil {
+		err = fmt.Errorf("failed to open archive entry %s/%s: %w", archivePath, filename, err)
+		return
+	}
+
+	defer file.Close()
+
+	asset, err = immich.PostAsset(
+		server,
+		archivePath,
+		filename,
+		file,
+		f.ModTime(),
+	)
+	if err != nil {
+		err = fmt.Errorf("failed to upload asset %s/%s: %w", archivePath, filename, err)
+		return
+	}
+	return
 }
