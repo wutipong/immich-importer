@@ -37,6 +37,8 @@ jobs:
 
       - name: Upload release artifact
         uses: actions/upload-release-asset@v1
+        permissions:
+          contents: write # Grants write permission to the GITHUB_TOKEN
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: ${{ env.ASSET_PATH }}
