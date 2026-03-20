@@ -67,8 +67,8 @@ func PostAsset(
 	)
 }
 
-func IsMediaFile(extension string) bool {
-	return slices.Contains(mediaExtensions, extension)
+func IsMediaFile(path string) bool {
+	return slices.Contains(mediaExtensions, filepath.Ext(path))
 }
 
 var mediaExtensions = []string{

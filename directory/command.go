@@ -37,7 +37,7 @@ func Process(
 			if d.IsDir() {
 				return true
 			}
-			if !immich.IsMediaFile(filepath.Ext(d.Name())) {
+			if !immich.IsMediaFile(d.Name()) {
 				return true
 			}
 			return false

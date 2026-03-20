@@ -23,7 +23,7 @@ func Process(
 	assetIds []string,
 	err error,
 ) {
-	if !IsArchive(filepath.Ext(albumPath)) {
+	if !IsArchiveFile(filepath.Ext(albumPath)) {
 		return
 	}
 	archiveFile, err := os.Open(filepath.Join(sourceDir, albumPath))
@@ -80,8 +80,8 @@ func Process(
 	return
 }
 
-func IsArchive(path string) bool {
-	return slices.Contains(archiveExtensions, path)
+func IsArchiveFile(path string) bool {
+	return slices.Contains(archiveExtensions, filepath.Ext(path))
 }
 
 var archiveExtensions = []string{
@@ -160,8 +160,7 @@ func WalkArchive(
 			}
 		}
 
-		extension := filepath.Ext(f.NameInArchive)
-		if slices.Contains(archiveExtensions, extension) {
+		if IsArchiveFile(f.NameInArchive) {
 			slog.Warn(
 				"archive contains nested archived. manually extraction required.",
 				slog.String("filename", filename),
@@ -169,7 +168,7 @@ func WalkArchive(
 			)
 		}
 
-		if immich.IsMediaFile(extension) {
+		if immich.IsMediaFile(f.NameInArchive) {
 			return mediaProcessFn(ctx, filename, f)
 		}
 
