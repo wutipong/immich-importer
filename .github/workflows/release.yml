@@ -39,9 +39,6 @@ jobs:
           echo "ASSET_PATH=$outfile" >> $GITHUB_ENV
 
       - name: Upload release artifact
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ env.ASSET_PATH }}
-          asset_name: ${{ env.ASSET_PATH }}
-          asset_content_type: application/octet-stream
+          files: ${{ env.ASSET_PATH }}
