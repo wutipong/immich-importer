@@ -12,10 +12,9 @@ import (
 	"strings"
 
 	"github.com/mholt/archives"
-	"github.com/saintfish/chardet"
 	"github.com/wutipong/immich-importer/immich"
 	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/ianaindex"
+	"golang.org/x/text/transform"
 )
 
 func Process(
@@ -72,9 +71,7 @@ func WalkArchive(
 		return
 	}
 
-	detector := chardet.NewTextDetector()
 	var decoder *encoding.Decoder = nil
-	var chardetResult *chardet.Result = nil
 
 	err = extractor.Extract(
 		ctx, stream,
@@ -85,30 +82,23 @@ func WalkArchive(
 
 			filename := f.NameInArchive
 			if decoder == nil {
-				chardetResult, err = detector.DetectBest([]byte(filename))
+				en, charset, err := DetectCharSet(filename)
 				if err != nil {
-					slog.Warn(
-						"failed to detect encoding. using filename as is.",
+					slog.Warn("failed to detect filename character set",
 						slog.String("filename", filename),
-						slog.String("error", err.Error()),
-					)
-				} else {
-					encoding, err := ianaindex.IANA.Encoding(chardetResult.Charset)
-					if err != nil {
-						slog.Warn(
-							"failed to get encoding. using filename as is.",
-							slog.String("filename", filename),
-							slog.String("charset", chardetResult.Charset),
-							slog.String("error", err.Error()),
-						)
-					} else {
-						slog.Info(
-							"detected filename encoding",
-							slog.String("filename", filename),
-							slog.String("charset", chardetResult.Charset),
-						)
-						decoder = encoding.NewDecoder()
+						slog.String("archive file", archivePath))
+
+					decoder = &encoding.Decoder{
+						Transformer: transform.Nop,
 					}
+				} else {
+					slog.Debug(
+						"using character set",
+						slog.String("charset", charset),
+						slog.String("filename", filename),
+						slog.String("archive file", archivePath),
+					)
+					decoder = en.NewDecoder()
 				}
 			}
 
@@ -118,7 +108,6 @@ func WalkArchive(
 					slog.Warn(
 						"failed to decode filename. using filename as is.",
 						slog.String("filename", filename),
-						slog.String("charset", chardetResult.Charset),
 						slog.String("error", err.Error()),
 					)
 				}
