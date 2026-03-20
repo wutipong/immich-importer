@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -271,6 +272,16 @@ func Process(
 				slog.String("path", path),
 				slog.String("albumPath", albumPath),
 			)
+
+			if !force && slices.ContainsFunc(albums, func(a immich.AlbumResponseDto) bool {
+				return a.AlbumName == albumPath
+			}) {
+				slog.Warn(
+					"album already exists. skipping.",
+					slog.String("name", albumPath),
+				)
+				return nil
+			}
 
 			if d.IsDir() {
 				if !processDirectory {
