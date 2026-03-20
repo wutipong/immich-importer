@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/mholt/archives"
 	"github.com/saintfish/chardet"
@@ -81,7 +82,7 @@ func Process(
 }
 
 func IsArchiveFile(path string) bool {
-	return slices.Contains(archiveExtensions, filepath.Ext(path))
+	return slices.Contains(archiveExtensions, strings.ToLower(filepath.Ext(path)))
 }
 
 var archiveExtensions = []string{
@@ -114,66 +115,68 @@ func WalkArchive(
 	var decoder *encoding.Decoder = nil
 	var chardetResult *chardet.Result = nil
 
-	err = extractor.Extract(ctx, stream, func(ctx context.Context, f archives.FileInfo) error {
-		if f.IsDir() {
-			return nil
-		}
+	err = extractor.Extract(
+		ctx, stream,
+		func(ctx context.Context, f archives.FileInfo) error {
+			if f.IsDir() {
+				return nil
+			}
 
-		filename := f.NameInArchive
-		if decoder == nil {
-			chardetResult, err = detector.DetectBest([]byte(filename))
-			if err != nil {
-				slog.Warn(
-					"failed to detect encoding. using filename as is.",
-					slog.String("filename", filename),
-					slog.String("error", err.Error()),
-				)
-			} else {
-				encoding, err := ianaindex.IANA.Encoding(chardetResult.Charset)
+			filename := f.NameInArchive
+			if decoder == nil {
+				chardetResult, err = detector.DetectBest([]byte(filename))
 				if err != nil {
 					slog.Warn(
-						"failed to get encoding. using filename as is.",
+						"failed to detect encoding. using filename as is.",
+						slog.String("filename", filename),
+						slog.String("error", err.Error()),
+					)
+				} else {
+					encoding, err := ianaindex.IANA.Encoding(chardetResult.Charset)
+					if err != nil {
+						slog.Warn(
+							"failed to get encoding. using filename as is.",
+							slog.String("filename", filename),
+							slog.String("charset", chardetResult.Charset),
+							slog.String("error", err.Error()),
+						)
+					} else {
+						slog.Info(
+							"detected filename encoding",
+							slog.String("filename", filename),
+							slog.String("charset", chardetResult.Charset),
+						)
+						decoder = encoding.NewDecoder()
+					}
+				}
+			}
+
+			if decoder != nil {
+				filename, err = decoder.String(filename)
+				if err != nil {
+					slog.Warn(
+						"failed to decode filename. using filename as is.",
 						slog.String("filename", filename),
 						slog.String("charset", chardetResult.Charset),
 						slog.String("error", err.Error()),
 					)
-				} else {
-					slog.Info(
-						"detected filename encoding",
-						slog.String("filename", filename),
-						slog.String("charset", chardetResult.Charset),
-					)
-					decoder = encoding.NewDecoder()
 				}
 			}
-		}
 
-		if decoder != nil {
-			filename, err = decoder.String(filename)
-			if err != nil {
+			if IsArchiveFile(f.NameInArchive) {
 				slog.Warn(
-					"failed to decode filename. using filename as is.",
+					"archive contains nested archived. manually extraction required.",
 					slog.String("filename", filename),
-					slog.String("charset", chardetResult.Charset),
-					slog.String("error", err.Error()),
+					slog.String("archive", archivePath),
 				)
 			}
-		}
 
-		if IsArchiveFile(f.NameInArchive) {
-			slog.Warn(
-				"archive contains nested archived. manually extraction required.",
-				slog.String("filename", filename),
-				slog.String("archive", archivePath),
-			)
-		}
+			if immich.IsMediaFile(f.NameInArchive) {
+				return mediaProcessFn(ctx, filename, f)
+			}
 
-		if immich.IsMediaFile(f.NameInArchive) {
-			return mediaProcessFn(ctx, filename, f)
-		}
-
-		return nil
-	})
+			return nil
+		})
 
 	return err
 }

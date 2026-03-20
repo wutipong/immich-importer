@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -68,7 +69,7 @@ func PostAsset(
 }
 
 func IsMediaFile(path string) bool {
-	return slices.Contains(mediaExtensions, filepath.Ext(path))
+	return slices.Contains(mediaExtensions, strings.ToLower(filepath.Ext(path)))
 }
 
 var mediaExtensions = []string{
