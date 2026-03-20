@@ -59,25 +59,59 @@ Then use `--profile=another` to import to another server.
 
 ## Usage
 
+The tool uses subcommands for different operations.
+
+### Setup Configuration
+
+First, set up your configuration interactively:
+
 ```bash
-immich-importer --source /path/to/import
+immich-importer setup
+```
+
+Or specify a profile:
+
+```bash
+immich-importer setup --profile=myprofile
+```
+
+### Import Assets
+
+Then run the import:
+
+```bash
+immich-importer run --source /path/to/import
 ```
 
 ### Flags
 
-- `--source, --src` (required): source directory to import from
+#### Global Flags
+- `--display-log` (default `warn`): console log level (`debug`, `info`, `warn`, `error`)
+- `--file-log` (default `info`): file log level
 - `--profile` (default `default`): profile name
+
+#### Run Command Flags
+- `--source, --src` (required): source directory to import from
 - `--force`: force processing even if albums already exist
 - `--dry-run`: do not upload to Immich, just simulate processing
 - `--disable-directory`: skip scanning subdirectories
 - `--disable-archive`: skip processing archive files
-- `--display-log` (default `warn`): console log level (`debug`, `info`, `warn`, `error`)
-- `--file-log` (default `info`): file log level
 
-### Example
+### Examples
 
+Setup configuration:
 ```bash
-immich-importer --source ~/Pictures --dry-run --display-log debug
+immich-importer setup --display-log debug
+```
+
+Import with dry run:
+```bash
+immich-importer run --source ~/Pictures --dry-run --display-log debug
+```
+
+Import with specific profile:
+```bash
+immich-importer run --source ~/Pictures --profile=myprofile
 ```
 
 ## How It Works

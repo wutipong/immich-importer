@@ -65,103 +65,148 @@ func main() {
 
 	cmd := &cli.Command{
 		Usage: "Import assets from subdirectories and archives file in a directory.",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:        "display-log",
-				Value:       "warn",
-				Usage:       "Minimum log-level on display (debug, info, warn, error).",
-				Destination: &displayLogLevelStr,
-				Category:    "Logging",
-			},
-			&cli.StringFlag{
-				Name:        "file-log",
-				Value:       "info",
-				Usage:       "Minimum log-level in log file (debug, info, warn, error).",
-				Destination: &fileLogLevelStr,
-				Category:    "Logging",
-			},
-			&cli.StringFlag{
-				Name:        "profile",
-				Value:       "default",
-				Usage:       "profile of immich server.",
-				Destination: &profile,
-			},
-			&cli.StringFlag{
-				Name:        "source",
-				Aliases:     []string{"src"},
-				Usage:       "Source directory.",
-				Destination: &sourceDir,
-				Required:    true,
-			},
-			&cli.BoolFlag{
-				Name:        "force",
-				Value:       false,
-				Usage:       "Force processing album even if an album with the same name exists.",
-				Destination: &force,
-			},
-			&cli.BoolFlag{
-				Name:        "dry-run",
-				Value:       false,
-				Usage:       "Processing assets without working with the Immich server.",
-				Destination: &dryRun,
-				Category:    "Processing",
-			},
-			&cli.BoolFlag{
-				Name:        "disable-directory",
-				Value:       false,
-				Usage:       "Disable processing media files in directories.",
-				Destination: &disableDirectory,
-				Category:    "Processing",
-			},
-			&cli.BoolFlag{
-				Name:        "disable-archive",
-				Value:       false,
-				Usage:       "Disable processing media files in archive files.",
-				Destination: &disableArchive,
-				Category:    "Processing",
-			},
-		},
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			err = SetupLog(
-				displayLogLevelStr,
-				fileLogLevelStr,
-				os.Stdout,
-				logFile,
-			)
-			if err != nil {
-				return fmt.Errorf("unable to setup logging system: %w", err)
-			}
+		Commands: []*cli.Command{
+			{
+				Name: "setup",
+				Usage: "Setup configuration file interactively. " +
+					"Existing configuration file will be overwritten.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "display-log",
+						Value:       "warn",
+						Usage:       "Minimum log-level on display (debug, info, warn, error).",
+						Destination: &displayLogLevelStr,
+						Category:    "Logging",
+					},
+					&cli.StringFlag{
+						Name:        "file-log",
+						Value:       "info",
+						Usage:       "Minimum log-level in log file (debug, info, warn, error).",
+						Destination: &fileLogLevelStr,
+						Category:    "Logging",
+					},
+					&cli.StringFlag{
+						Name:        "profile",
+						Value:       "default",
+						Usage:       "profile of immich server.",
+						Destination: &profile,
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					err = SetupLog(
+						displayLogLevelStr,
+						fileLogLevelStr,
+						os.Stdout,
+						logFile,
+					)
+					if err != nil {
+						return fmt.Errorf("unable to setup logging system: %w", err)
+					}
 
-			c, err := config.LoadConfig(cmd.Flags[2].Get().(string), configPath)
-			if err != nil {
-				return fmt.Errorf("unable to load configuration: %w", err)
-			}
+					return config.SetupConfig(profile, configPath)
+				},
+			}, {
+				Name:  "run",
+				Usage: "perform importing assets.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "display-log",
+						Value:       "warn",
+						Usage:       "Minimum log-level on display (debug, info, warn, error).",
+						Destination: &displayLogLevelStr,
+						Category:    "Logging",
+					},
+					&cli.StringFlag{
+						Name:        "file-log",
+						Value:       "info",
+						Usage:       "Minimum log-level in log file (debug, info, warn, error).",
+						Destination: &fileLogLevelStr,
+						Category:    "Logging",
+					},
+					&cli.StringFlag{
+						Name:        "profile",
+						Value:       "default",
+						Usage:       "profile of immich server.",
+						Destination: &profile,
+					},
+					&cli.StringFlag{
+						Name:        "source",
+						Aliases:     []string{"src"},
+						Usage:       "Source directory.",
+						Destination: &sourceDir,
+						Required:    true,
+					},
+					&cli.BoolFlag{
+						Name:        "force",
+						Value:       false,
+						Usage:       "Force processing album even if an album with the same name exists.",
+						Destination: &force,
+					},
+					&cli.BoolFlag{
+						Name:        "dry-run",
+						Value:       false,
+						Usage:       "Processing assets without working with the Immich server.",
+						Destination: &dryRun,
+						Category:    "Processing",
+					},
+					&cli.BoolFlag{
+						Name:        "disable-directory",
+						Value:       false,
+						Usage:       "Disable processing media files in directories.",
+						Destination: &disableDirectory,
+						Category:    "Processing",
+					},
+					&cli.BoolFlag{
+						Name:        "disable-archive",
+						Value:       false,
+						Usage:       "Disable processing media files in archive files.",
+						Destination: &disableArchive,
+						Category:    "Processing",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					err = SetupLog(
+						displayLogLevelStr,
+						fileLogLevelStr,
+						os.Stdout,
+						logFile,
+					)
+					if err != nil {
+						return fmt.Errorf("unable to setup logging system: %w", err)
+					}
 
-			slog.Info("Immich instance",
-				slog.String("url", c.ImmichURL),
-				slog.String("api_key",
-					strings.Repeat("*", len(c.ImmichAPIKey)),
-				),
-			)
+					c, err := config.LoadConfig(cmd.Flags[2].Get().(string), configPath)
+					if err != nil {
+						return fmt.Errorf("unable to load configuration: %w", err)
+					}
 
-			url, err := url.Parse(c.ImmichURL)
-			if err != nil {
-				return fmt.Errorf("invalid immich url: %w", err)
-			}
+					slog.Info("Immich instance",
+						slog.String("url", c.ImmichURL),
+						slog.String("api_key",
+							strings.Repeat("*", len(c.ImmichAPIKey)),
+						),
+					)
 
-			server := immich.ServerConfig{
-				URL:    url,
-				APIKey: c.ImmichAPIKey,
-				DryRun: dryRun,
-			}
+					url, err := url.Parse(c.ImmichURL)
+					if err != nil {
+						return fmt.Errorf("invalid immich url: %w", err)
+					}
 
-			return Process(
-				server,
-				sourceDir,
-				force,
-				!disableDirectory,
-				!disableArchive,
-			)
+					server := immich.ServerConfig{
+						URL:    url,
+						APIKey: c.ImmichAPIKey,
+						DryRun: dryRun,
+					}
+
+					return Process(
+						server,
+						sourceDir,
+						force,
+						!disableDirectory,
+						!disableArchive,
+					)
+				},
+			},
 		},
 	}
 
