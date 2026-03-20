@@ -1,8 +1,10 @@
 package archive
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -55,7 +57,7 @@ var archiveExtensions = []string{
 func WalkArchive(
 	server immich.ServerConfig,
 	archivePath string,
-	archive *os.File,
+	archive io.Reader,
 ) (assetIds []string, err error) {
 	ctx := context.Background()
 
@@ -123,11 +125,30 @@ func WalkArchive(
 			}
 
 			if IsArchiveFile(f.NameInArchive) {
-				slog.Warn(
-					"archive contains nested archived. manually extraction required.",
+				slog.Info(
+					"nested archive found.",
 					slog.String("filename", filename),
 					slog.String("archive", archivePath),
 				)
+
+				file, err := f.Open()
+
+				if err != nil {
+					return fmt.Errorf("failed to open nested archive %s: %w", filename, err)
+				}
+				defer file.Close()
+
+				buffer := bytes.Buffer{}
+				_, err = io.Copy(&buffer, file)
+
+				reader := bytes.NewReader(buffer.Bytes())
+
+				nestedAssetIds, err := WalkArchive(server, filepath.Join(archivePath, filename), reader)
+				if err != nil {
+					return fmt.Errorf("failed to process nested archive %s: %w", filename, err)
+				}
+				assetIds = append(assetIds, nestedAssetIds...)
+				return nil
 			}
 
 			if immich.IsMediaFile(f.NameInArchive) {
