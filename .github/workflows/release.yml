@@ -3,7 +3,7 @@ name: Build and attach release artifact
 on:
   release:
     types: [published]
-
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,12 +23,8 @@ jobs:
 
       - name: Build immich-importer
         run: |
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            ext=".exe"
-          else
-            ext=""
-          fi
-          out="immich-importer-${{ matrix.os }}-${{ matrix.arch }}${ext}"
+          mkdir "immich-importer-${{ matrix.os }}-${{ matrix.arch }}"
+          out="immich-importer-${{ matrix.os }}-${{ matrix.arch }}"
           GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o "$out" ./...
           echo "ASSET_PATH=$out" >> $GITHUB_ENV
 
