@@ -177,7 +177,10 @@ func main() {
 
 					c, err := config.LoadConfig(cmd.Flags[2].Get().(string), configPath)
 					if err != nil {
-						return fmt.Errorf("unable to load configuration: %w", err)
+						return fmt.Errorf(
+							"unable to load configuration. please run 'immich-importer setup' first: %w",
+							err,
+						)
 					}
 
 					slog.Info("Immich instance",
