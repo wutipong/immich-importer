@@ -17,7 +17,9 @@ func SetupConfig(profile string, path string) error {
 	slog.Debug("Configuration file", slog.String("path", path))
 
 	configMap, err := OpenConfigMap(path)
-	if err != nil {
+	if errors.Is(err, os.ErrNotExist) {
+		slog.Debug("configuration file not found.", slog.String("path", path))
+	} else if err != nil {
 		return err
 	}
 
