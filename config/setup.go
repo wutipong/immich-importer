@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/manifoldco/promptui"
 	"go.yaml.in/yaml/v4"
@@ -16,7 +17,9 @@ func SetupConfig(profile string, path string) error {
 	slog.Debug("Configuration file", slog.String("path", path))
 
 	configMap, err := OpenConfigMap(path)
-	if err != nil {
+	if errors.Is(err, os.ErrNotExist) {
+		slog.Debug("configuration file not found.", slog.String("path", path))
+	} else if err != nil {
 		return err
 	}
 
@@ -119,9 +122,14 @@ func OpenConfigMap(path string) (configMap map[string]Config, err error) {
 }
 
 func SaveConfigMap(path string, configMap map[string]Config) error {
+	err := os.MkdirAll(filepath.Base(path), 0777)
+	if err != nil {
+		return fmt.Errorf("failed to create configuration file: %w", err)
+	}
+
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to open configuration file: %w", err)
+		return fmt.Errorf("failed to save configuration file: %w", err)
 	}
 	defer file.Close()
 
@@ -130,7 +138,7 @@ func SaveConfigMap(path string, configMap map[string]Config) error {
 
 	err = yamlEncoder.Encode(configMap)
 	if err != nil {
-		return fmt.Errorf("failed to write configuration file: %w", err)
+		return fmt.Errorf("failed to save configuration file: %w", err)
 	}
 
 	return nil
