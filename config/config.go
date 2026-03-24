@@ -10,7 +10,7 @@ type Config struct {
 }
 
 func LoadConfig(profile string, path string) (config Config, err error) {
-	configMap, err := OpenConfigMap(path)
+	configMap, err := OpenConfigMap()
 	if err != nil {
 		err = fmt.Errorf("unable to open configuration file: %w", err)
 		return

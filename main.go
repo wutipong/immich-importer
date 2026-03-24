@@ -80,7 +80,7 @@ func main() {
 				Usage: "Setup configuration file interactively. " +
 					"Existing configuration file will be overwritten.",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return config.SetupConfig(profile, configPath)
+					return config.SetupConfig(profile)
 				},
 			}, {
 				Name:  "run",
