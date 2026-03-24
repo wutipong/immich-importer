@@ -10,6 +10,7 @@ import (
 	"github.com/urfave/cli/v3"
 	"github.com/wutipong/immich-importer/archive"
 	"github.com/wutipong/immich-importer/config"
+	"github.com/wutipong/immich-importer/directory"
 	"github.com/wutipong/immich-importer/logging"
 	"github.com/wutipong/immich-importer/run"
 )
@@ -50,7 +51,10 @@ func main() {
 			},
 		},
 		Commands: []*cli.Command{
-			config.Command(&profile), run.Command(&profile), archive.Command(&profile),
+			config.Command(&profile),
+			run.Command(&profile),
+			archive.Command(&profile),
+			directory.Command(&profile),
 		},
 	}
 
