@@ -70,6 +70,13 @@ func Command(profile *string) *cli.Command {
 			}
 
 			assetIds, err := Process(server, sourceDir, archivePath)
+			if err != nil {
+				slog.Error(
+					"failed upload assets.",
+					slog.String("error", err.Error()),
+				)
+				return nil
+			}
 
 			slog.Info("creating album", slog.String("name", archivePath))
 			createdAlbum, err := immich.CreateAlbum(
