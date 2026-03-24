@@ -63,8 +63,7 @@ func main() {
 			}
 			return
 		}, After: func(ctx context.Context, c *cli.Command) error {
-			logging.CleanUp()
-			return nil
+			return logging.CleanUp()
 		},
 	}
 
