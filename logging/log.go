@@ -39,7 +39,7 @@ func Setup(
 	dispLogLevelStr string,
 	fileLogLevelStr string,
 ) error {
-
+	fmt.Printf("displayLogLv: %s\n", dispLogLevelStr)
 	t := time.Now().Format("20060102_150405")
 	var err error
 	logFile, err = os.OpenFile(
@@ -72,9 +72,11 @@ func Setup(
 	tintHandler := tint.NewHandler(os.Stdout, &tint.Options{
 		Level:      dispLevel,
 		TimeFormat: time.Kitchen,
+		AddSource:  true,
 	})
 	jsonHandler := slog.NewJSONHandler(logFile, &slog.HandlerOptions{
-		Level: fileLevel,
+		Level:     fileLevel,
+		AddSource: true,
 	})
 
 	slog.SetDefault(slog.New(

@@ -56,14 +56,17 @@ func main() {
 			archive.Command(&profile),
 			directory.Command(&profile),
 		},
+		Before: func(ctx context.Context, c *cli.Command) (ctx2 context.Context, err error) {
+			err = logging.Setup(displayLogLevelStr, fileLogLevelStr)
+			if err != nil {
+				slog.Error("unable to setup logging system", slog.String("error", err.Error()))
+			}
+			return
+		}, After: func(ctx context.Context, c *cli.Command) error {
+			logging.CleanUp()
+			return nil
+		},
 	}
-
-	err := logging.Setup(displayLogLevelStr, fileLogLevelStr)
-	if err != nil {
-		slog.Error("unable to setup logging system", slog.String("error", err.Error()))
-	}
-
-	defer logging.CleanUp()
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		slog.Error("application ended with error", slog.String("error", err.Error()))

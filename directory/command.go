@@ -21,7 +21,7 @@ func Command(profile *string) *cli.Command {
 	dryRun := false
 
 	return &cli.Command{
-		Name:  "archive",
+		Name:  "directory",
 		Usage: "create an album from an archive file.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -72,18 +72,7 @@ func Command(profile *string) *cli.Command {
 				DryRun: dryRun,
 			}
 
-			assetIds, err := Process(server, sourceDir, inputDir)
-
-			slog.Info("creating album", slog.String("name", inputDir))
-			createdAlbum, err := immich.CreateAlbum(
-				server, inputDir, assetIds,
-			)
-			if err != nil {
-				slog.Error("failed to create album", slog.String("error", err.Error()))
-				return nil
-			}
-
-			slog.Info("created album", slog.Any("album", createdAlbum))
+			DoCommand(server, sourceDir, inputDir)
 
 			return nil
 		},
@@ -91,6 +80,10 @@ func Command(profile *string) *cli.Command {
 }
 
 func DoCommand(server immich.ServerConfig, sourceDir string, inputDir string) error {
+	slog.Debug("processing path",
+		slog.String("sourceDir", sourceDir),
+		slog.String("inputDir", inputDir),
+	)
 	assetIds, err := Process(server, sourceDir, inputDir)
 	if err != nil {
 		slog.Error(
@@ -122,9 +115,15 @@ func DoCommand(server immich.ServerConfig, sourceDir string, inputDir string) er
 			return nil
 		}
 
+		slog.Debug("processing path",
+			slog.String("path", path),
+			slog.String("sourceDir", sourceDir),
+			slog.String("inputDir", inputDir),
+		)
+
 		var assetIds []string
 
-		albumPath, err := filepath.Rel(sourceDir, filepath.Join(inputDir, path))
+		albumPath, err := filepath.Rel(sourceDir, path)
 		if err != nil {
 			slog.Error(
 				"failed to determine album name.",
