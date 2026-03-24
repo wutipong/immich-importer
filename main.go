@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/url"
 	"os"
@@ -18,6 +17,7 @@ import (
 	"github.com/wutipong/immich-importer/config"
 	"github.com/wutipong/immich-importer/directory"
 	"github.com/wutipong/immich-importer/immich"
+	"github.com/wutipong/immich-importer/logging"
 )
 
 func main() {
@@ -25,23 +25,6 @@ func main() {
 		Level:      slog.LevelError,
 		TimeFormat: time.Kitchen,
 	})))
-
-	t := time.Now().Format("20060102_150405")
-
-	logFile, err := os.OpenFile(
-		fmt.Sprintf("immich-importer.%s.log", t),
-		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
-		0644,
-	)
-	if err != nil {
-		slog.Error(
-			"unable to open log file to write.",
-			slog.String("error", err.Error()),
-		)
-		return
-	}
-
-	defer logFile.Close()
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -63,72 +46,46 @@ func main() {
 	disableDirectory := true
 	disableArchive := true
 
+	source := "world"
+	album := ""
+
 	cmd := &cli.Command{
 		Usage: "Import assets from subdirectories and archives file in a directory.",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "display-log",
+				Value:       "warn",
+				Usage:       "Minimum log-level on display (debug, info, warn, error).",
+				Destination: &displayLogLevelStr,
+				Category:    "Logging",
+			},
+			&cli.StringFlag{
+				Name:        "file-log",
+				Value:       "info",
+				Usage:       "Minimum log-level in log file (debug, info, warn, error).",
+				Destination: &fileLogLevelStr,
+				Category:    "Logging",
+			},
+			&cli.StringFlag{
+				Name:        "profile",
+				Value:       "default",
+				Usage:       "profile of immich server.",
+				Destination: &profile,
+				Category:    "Immich Server",
+			},
+		},
 		Commands: []*cli.Command{
 			{
 				Name: "setup",
 				Usage: "Setup configuration file interactively. " +
 					"Existing configuration file will be overwritten.",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:        "display-log",
-						Value:       "warn",
-						Usage:       "Minimum log-level on display (debug, info, warn, error).",
-						Destination: &displayLogLevelStr,
-						Category:    "Logging",
-					},
-					&cli.StringFlag{
-						Name:        "file-log",
-						Value:       "info",
-						Usage:       "Minimum log-level in log file (debug, info, warn, error).",
-						Destination: &fileLogLevelStr,
-						Category:    "Logging",
-					},
-					&cli.StringFlag{
-						Name:        "profile",
-						Value:       "default",
-						Usage:       "profile of immich server.",
-						Destination: &profile,
-					},
-				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					err = SetupLog(
-						displayLogLevelStr,
-						fileLogLevelStr,
-						os.Stdout,
-						logFile,
-					)
-					if err != nil {
-						return fmt.Errorf("unable to setup logging system: %w", err)
-					}
-
 					return config.SetupConfig(profile, configPath)
 				},
 			}, {
 				Name:  "run",
 				Usage: "perform importing assets.",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:        "display-log",
-						Value:       "warn",
-						Usage:       "Minimum log-level on display (debug, info, warn, error).",
-						Destination: &displayLogLevelStr,
-						Category:    "Logging",
-					},
-					&cli.StringFlag{
-						Name:        "file-log",
-						Value:       "info",
-						Usage:       "Minimum log-level in log file (debug, info, warn, error).",
-						Destination: &fileLogLevelStr,
-						Category:    "Logging",
-					},
-					&cli.StringFlag{
-						Name:        "profile",
-						Value:       "default",
-						Usage:       "profile of immich server.",
-						Destination: &profile,
-					},
 					&cli.StringFlag{
 						Name:        "source",
 						Aliases:     []string{"src"},
@@ -165,17 +122,7 @@ func main() {
 					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					err = SetupLog(
-						displayLogLevelStr,
-						fileLogLevelStr,
-						os.Stdout,
-						logFile,
-					)
-					if err != nil {
-						return fmt.Errorf("unable to setup logging system: %w", err)
-					}
-
-					c, err := config.LoadConfig(cmd.Flags[2].Get().(string), configPath)
+					c, err := config.LoadConfig(profile, configPath)
 					if err != nil {
 						return fmt.Errorf(
 							"unable to load configuration. please run 'immich-importer setup' first: %w",
@@ -209,69 +156,67 @@ func main() {
 						!disableArchive,
 					)
 				},
+			}, {
+				Name:  "archive",
+				Usage: "create an album from an archive file.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "source",
+						Destination: &source,
+						Required:    true,
+					},
+					&cli.StringFlag{
+						Name:        "album",
+						Destination: &album,
+						Required:    true,
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					c, err := config.LoadConfig(profile, configPath)
+					if err != nil {
+						return fmt.Errorf(
+							"unable to load configuration. please run 'immich-importer setup' first: %w",
+							err,
+						)
+					}
+
+					slog.Info("Immich instance",
+						slog.String("url", c.ImmichURL),
+						slog.String("api_key",
+							strings.Repeat("*", len(c.ImmichAPIKey)),
+						),
+					)
+
+					url, err := url.Parse(c.ImmichURL)
+					if err != nil {
+						return fmt.Errorf("invalid immich url: %w", err)
+					}
+
+					server := immich.ServerConfig{
+						URL:    url,
+						APIKey: c.ImmichAPIKey,
+						DryRun: dryRun,
+					}
+
+					err = archive.Command(server, album, source)
+
+					return nil
+				},
 			},
 		},
 	}
 
+	err = logging.Setup(displayLogLevelStr, fileLogLevelStr)
+	if err != nil {
+		slog.Error("unable to setup logging system", slog.String("error", err.Error()))
+	}
+
+	defer logging.CleanUp()
+
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		slog.Error("application ended with error", slog.String("error", err.Error()))
-	}
-}
-
-func ParseLogLevel(levelStr string) (level slog.Level, err error) {
-	switch strings.ToLower(strings.Trim(levelStr, "")) {
-	case "debug":
-		level = slog.LevelDebug
-		return
-
-	case "info":
-		level = slog.LevelInfo
-		return
-
-	case "warn":
-		level = slog.LevelWarn
-		return
-
-	case "error":
-		level = slog.LevelError
 		return
 	}
-
-	err = fmt.Errorf("invalid log levl: '%s'", levelStr)
-	return
-}
-
-func SetupLog(
-	dispLogLevelStr string,
-	fileLogLevelStr string,
-	dispWriter io.Writer,
-	fileWriter io.Writer,
-) error {
-	fileLevel, err := ParseLogLevel(fileLogLevelStr)
-	if err != nil {
-		err = fmt.Errorf("unable to parse log level for log file: %w", err)
-		return err
-	}
-
-	dispLevel, err := ParseLogLevel(dispLogLevelStr)
-	if err != nil {
-		err = fmt.Errorf("unable to parse log level for log file: %w", err)
-		return err
-	}
-
-	tintHandler := tint.NewHandler(dispWriter, &tint.Options{
-		Level:      dispLevel,
-		TimeFormat: time.Kitchen,
-	})
-	jsonHandler := slog.NewJSONHandler(fileWriter, &slog.HandlerOptions{
-		Level: fileLevel,
-	})
-
-	slog.SetDefault(slog.New(
-		slog.NewMultiHandler(jsonHandler, tintHandler),
-	))
-
-	return nil
 }
 
 func Process(
