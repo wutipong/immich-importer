@@ -88,6 +88,11 @@ func SetupConfig(profile string, path string) error {
 }
 
 func OpenConfigMap(path string) (configMap map[string]Config, err error) {
+	slog.Debug(
+		"Configuration file",
+		slog.String("file", path),
+		slog.String("dir", filepath.Dir(path)),
+	)
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
 	if errors.Is(err, os.ErrNotExist) {
 		slog.Warn(
@@ -122,9 +127,15 @@ func OpenConfigMap(path string) (configMap map[string]Config, err error) {
 }
 
 func SaveConfigMap(path string, configMap map[string]Config) error {
-	err := os.MkdirAll(filepath.Base(path), 0777)
+	slog.Debug(
+		"Configuration file",
+		slog.String("file", path),
+		slog.String("dir", filepath.Dir(path)),
+	)
+
+	err := os.MkdirAll(filepath.Dir(path), 0777)
 	if err != nil {
-		return fmt.Errorf("failed to create configuration file: %w", err)
+		return fmt.Errorf("failed to create configuration directory: %w", err)
 	}
 
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
