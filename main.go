@@ -75,14 +75,7 @@ func main() {
 			},
 		},
 		Commands: []*cli.Command{
-			{
-				Name: "setup",
-				Usage: "Setup configuration file interactively. " +
-					"Existing configuration file will be overwritten.",
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return config.SetupConfig(profile)
-				},
-			}, {
+			config.Command(&profile), {
 				Name:  "run",
 				Usage: "perform importing assets.",
 				Flags: []cli.Flag{
