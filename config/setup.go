@@ -141,7 +141,7 @@ func SaveConfigMap(configMap map[string]Config) error {
 		return err
 	}
 
-	err = os.MkdirAll(filepath.Base(path), 0777)
+	err = os.MkdirAll(filepath.Dir(path), 0777)
 	if err != nil {
 		return fmt.Errorf("failed to create configuration directory: %w", err)
 	}
