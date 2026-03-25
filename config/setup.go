@@ -13,13 +13,9 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func SetupConfig(profile string, path string) error {
-	slog.Debug("Configuration file", slog.String("path", path))
-
-	configMap, err := OpenConfigMap(path)
-	if errors.Is(err, os.ErrNotExist) {
-		slog.Debug("configuration file not found.", slog.String("path", path))
-	} else if err != nil {
+func SetupConfig(profile string) error {
+	configMap, err := OpenConfigMap()
+	if err != nil {
 		return err
 	}
 
@@ -79,7 +75,7 @@ func SetupConfig(profile string, path string) error {
 
 	configMap[profile] = config
 
-	err = SaveConfigMap(path, configMap)
+	err = SaveConfigMap(configMap)
 	if err != nil {
 		return err
 	}
@@ -87,12 +83,25 @@ func SetupConfig(profile string, path string) error {
 	return nil
 }
 
-func OpenConfigMap(path string) (configMap map[string]Config, err error) {
-	slog.Debug(
-		"Configuration file",
-		slog.String("file", path),
-		slog.String("dir", filepath.Dir(path)),
-	)
+func CreateConfigPath() (path string, err error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		slog.Error(
+			"failed to get user home directory",
+			slog.String("error", err.Error()),
+		)
+		return
+	}
+	path = filepath.Join(homeDir, ".immich-importer", "config.yaml")
+
+	return
+}
+
+func OpenConfigMap() (configMap map[string]Config, err error) {
+	path, err := CreateConfigPath()
+	if err != nil {
+		return
+	}
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
 	if errors.Is(err, os.ErrNotExist) {
 		slog.Warn(
@@ -126,14 +135,13 @@ func OpenConfigMap(path string) (configMap map[string]Config, err error) {
 	return
 }
 
-func SaveConfigMap(path string, configMap map[string]Config) error {
-	slog.Debug(
-		"Configuration file",
-		slog.String("file", path),
-		slog.String("dir", filepath.Dir(path)),
-	)
+func SaveConfigMap(configMap map[string]Config) error {
+	path, err := CreateConfigPath()
+	if err != nil {
+		return err
+	}
 
-	err := os.MkdirAll(filepath.Dir(path), 0777)
+	err = os.MkdirAll(filepath.Dir(path), 0777)
 	if err != nil {
 		return fmt.Errorf("failed to create configuration directory: %w", err)
 	}

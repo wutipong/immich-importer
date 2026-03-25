@@ -9,8 +9,8 @@ type Config struct {
 	ImmichAPIKey string `yaml:"immich_api_key"`
 }
 
-func LoadConfig(profile string, path string) (config Config, err error) {
-	configMap, err := OpenConfigMap(path)
+func LoadConfig(profile string) (config Config, err error) {
+	configMap, err := OpenConfigMap()
 	if err != nil {
 		err = fmt.Errorf("unable to open configuration file: %w", err)
 		return
