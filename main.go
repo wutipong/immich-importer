@@ -12,6 +12,7 @@ import (
 	"github.com/wutipong/immich-importer/config"
 	"github.com/wutipong/immich-importer/directory"
 	"github.com/wutipong/immich-importer/logging"
+	"github.com/wutipong/immich-importer/merge"
 	"github.com/wutipong/immich-importer/run"
 )
 
@@ -55,6 +56,7 @@ func main() {
 			run.Command(&profile),
 			archive.Command(&profile),
 			directory.Command(&profile),
+			merge.Command(&profile),
 		},
 		Before: func(ctx context.Context, c *cli.Command) (ctx2 context.Context, err error) {
 			err = logging.Setup(displayLogLevelStr, fileLogLevelStr)
