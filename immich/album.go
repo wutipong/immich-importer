@@ -19,6 +19,17 @@ func GetAlbums(server ServerConfig) (
 	return Get[[]AlbumResponseDto](server, "/api/albums")
 }
 
+func GetAlbum(server ServerConfig, id string) (
+	album AlbumResponseDto,
+	err error,
+) {
+	if server.DryRun {
+		slog.Debug("Dry run: return empty album list")
+		return AlbumResponseDto{}, nil
+	}
+	return Get[AlbumResponseDto](server, path.Join("/api/albums", id))
+}
+
 func DeleteEmptyAlbums(server ServerConfig) error {
 	if server.DryRun {
 		slog.Debug("Dry run: skipping empty album deletion")
@@ -38,9 +49,9 @@ func DeleteEmptyAlbums(server ServerConfig) error {
 
 		slog.Debug("Deleting album",
 			slog.String("name", album.AlbumName),
-			slog.String("id", album.Id),
+			slog.String("id", album.ID),
 		)
-		err = DeleteAlbum(server, album.Id)
+		err = DeleteAlbum(server, album.ID)
 		if err != nil {
 			return fmt.Errorf("failed to delete album '%s': %w",
 				album.AlbumName, err)
