@@ -4,7 +4,7 @@ import "time"
 
 type AlbumResponseDto struct {
 	AlbumName  string             `json:"albumName"`
-	Id         string             `json:"id"`
+	ID         string             `json:"id"`
 	AssetCount int64              `json:"assetCount"`
 	Assets     []AssetResponseDto `json:"assets"`
 }

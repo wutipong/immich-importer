@@ -16,6 +16,7 @@ func Command(profile *string) *cli.Command {
 	pattern := ""
 	dryRun := false
 	album := ""
+	disableDelete := false
 
 	return &cli.Command{
 		Name:  "merge",
@@ -30,17 +31,25 @@ func Command(profile *string) *cli.Command {
 			&cli.StringFlag{
 				Name:        "pattern",
 				Destination: &pattern,
-				Usage:       "Regex pattern to match name of albums to merge.",
+				Usage:       "Regex pattern to match name of albums to merge. Use Golang/RE2 pattern.",
 				Required:    true,
+			},
+			&cli.BoolFlag{
+				Name:        "disable-deletion",
+				Destination: &disableDelete,
+				Usage:       "Do not delete existing albums",
 			},
 			&cli.BoolFlag{
 				Name:        "dry-run",
 				Value:       false,
-				Usage:       "Processing assets without crete an output.",
+				Usage:       "Processing assets without working with the Immich server.",
 				Destination: &dryRun,
 				Category:    "Processing",
 			},
 		},
+		UsageText: `Merge multiple albums that matches the given pattern into a new album. The pattern is in Google's RE2 syntax.
+For example, to merge any albums with name begins with 'abc', use the pattern (without quote)'^abc.*$.
+See https://pkg.go.dev/regexp/syntax for information on patterns.`,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			c, err := config.LoadConfig(*profile)
 			if err != nil {
@@ -68,7 +77,7 @@ func Command(profile *string) *cli.Command {
 				DryRun: dryRun,
 			}
 
-			err = Process(server, album, pattern)
+			err = Process(server, album, pattern, !disableDelete)
 			if err != nil {
 				return fmt.Errorf("failed to merge albums: %w", err)
 			}
