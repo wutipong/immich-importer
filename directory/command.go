@@ -93,16 +93,20 @@ func DoCommand(server immich.ServerConfig, sourceDir string, inputDir string) er
 		return nil
 	}
 
-	slog.Info("creating album", slog.String("name", inputDir))
-	createdAlbum, err := immich.CreateAlbum(
-		server, inputDir, assetIds,
-	)
-	if err != nil {
-		slog.Error("failed to create album", slog.String("error", err.Error()))
-		return nil
-	}
+	if len(assetIds) > 0 {
+		slog.Info("creating album", slog.String("name", inputDir))
+		createdAlbum, err := immich.CreateAlbum(
+			server, inputDir, assetIds,
+		)
+		if err != nil {
+			slog.Error("failed to create album", slog.String("error", err.Error()))
+			return nil
+		}
 
-	slog.Info("created album", slog.Any("album", createdAlbum))
+		slog.Info("created album", slog.Any("album", createdAlbum))
+	} else {
+		slog.Warn("directory does not contain any media files. Walking sub-directory next.")
+	}
 
 	err = filepath.WalkDir(filepath.Join(sourceDir, inputDir), func(path string, d os.DirEntry, err error,
 	) error {
