@@ -3,9 +3,10 @@ package immich
 import "time"
 
 type AlbumResponseDto struct {
-	AlbumName  string `json:"albumName"`
-	Id         string `json:"id"`
-	AssetCount int64  `json:"assetCount"`
+	AlbumName  string             `json:"albumName"`
+	Id         string             `json:"id"`
+	AssetCount int64              `json:"assetCount"`
+	Assets     []AssetResponseDto `json:"assets"`
 }
 
 type CreateAlbumRequest struct {
@@ -39,4 +40,8 @@ type AssetMediaRequest struct {
 type AssetMediaResponseDto struct {
 	ID     string `json:"id"`
 	Status string `json:"status"`
+}
+
+type AssetResponseDto struct {
+	ID string `json:"id"`
 }
