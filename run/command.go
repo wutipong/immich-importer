@@ -210,7 +210,7 @@ func Process(
 
 				var albumIds []string
 				for _, album := range matchingAlbums {
-					albumIds = append(albumIds, album.Id)
+					albumIds = append(albumIds, album.ID)
 				}
 
 				err = immich.AddAssetsToAlbum(server, albumIds, assetIds)
