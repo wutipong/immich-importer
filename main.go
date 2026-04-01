@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
+	"runtime/debug"
 	"time"
 
 	"github.com/lmittmann/tint"
@@ -58,6 +60,21 @@ func main() {
 			directory.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
 			merge.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
 			logging.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
+			{
+				Name:    "version",
+				Aliases: []string{"v"},
+				Usage:   "Print version information",
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					version := "unknown"
+					if info, ok := debug.ReadBuildInfo(); ok {
+						version = info.Main.Version
+					} else {
+						fmt.Println("unknown")
+					}
+					fmt.Printf("immich-importer version: %s\n", version)
+					return nil
+				},
+			},
 		},
 	}
 

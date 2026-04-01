@@ -134,6 +134,15 @@ immich-importer log latest
 immich-importer log purge --keep-latest 2
 ```
 
+### `version`
+
+Print the current application version.
+
+```bash
+immich-importer version
+immich-importer v
+```
+
 ## Global flags
 
 These flags work for all commands:
@@ -160,6 +169,12 @@ Import using a different profile:
 
 ```bash
 immich-importer run --source-dir ~/Pictures --profile=work
+```
+
+Print the installed version:
+
+```bash
+immich-importer version
 ```
 
 Create an album from an archive:
