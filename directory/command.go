@@ -13,9 +13,10 @@ import (
 	"github.com/wutipong/immich-importer/archive"
 	"github.com/wutipong/immich-importer/config"
 	"github.com/wutipong/immich-importer/immich"
+	"github.com/wutipong/immich-importer/logging"
 )
 
-func Command(profile *string) *cli.Command {
+func Command(profile *string, displayLogLevel *string, fileLogLevel *string) *cli.Command {
 	sourceDir := ""
 	inputDir := ""
 	dryRun := false
@@ -46,6 +47,12 @@ func Command(profile *string) *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
+			err := logging.Setup(*profile, *displayLogLevel, true, *fileLogLevel)
+			if err != nil {
+				return fmt.Errorf("unable to setup log: %w", err)
+			}
+			defer logging.CleanUp()
+
 			c, err := config.LoadConfig(*profile)
 			if err != nil {
 				return fmt.Errorf(
