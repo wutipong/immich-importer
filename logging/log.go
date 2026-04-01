@@ -71,33 +71,42 @@ func Setup(
 		return fmt.Errorf("unable to create log directory: %w", err)
 	}
 
-	currentLogFilePath = filepath.Join(logLocation, CreateLogFileName(profile))
-	logFile, err = os.OpenFile(
-		currentLogFilePath,
-		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
-		0644,
-	)
-	if err != nil {
-		slog.Error(
-			"unable to open log file to write.",
-			slog.String("error", err.Error()),
+	if !enableFileLog {
+		slog.SetDefault(slog.New(tintHandler))
+		return nil
+	} else {
+		currentLogFilePath = filepath.Join(logLocation, CreateLogFileName(profile))
+		logFile, err = os.OpenFile(
+			currentLogFilePath,
+			os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
+			0644,
 		)
-		return err
+		if err != nil {
+			slog.Error(
+				"unable to open log file to write.",
+				slog.String("error", err.Error()),
+			)
+			return err
+		}
+
+		jsonHandler := slog.NewJSONHandler(logFile, &slog.HandlerOptions{
+			Level: fileLevel,
+			// AddSource: true,
+		})
+
+		slog.SetDefault(slog.New(
+			slog.NewMultiHandler(jsonHandler, tintHandler),
+		))
 	}
-
-	jsonHandler := slog.NewJSONHandler(logFile, &slog.HandlerOptions{
-		Level: fileLevel,
-		// AddSource: true,
-	})
-
-	slog.SetDefault(slog.New(
-		slog.NewMultiHandler(jsonHandler, tintHandler),
-	))
 
 	return nil
 }
 
 func CleanUp() error {
+	if logFile == nil {
+		return nil
+	}
+
 	err := logFile.Close()
 	if err != nil {
 		return fmt.Errorf("failed to clean up logging: %w", err)

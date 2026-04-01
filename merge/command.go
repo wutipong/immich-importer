@@ -10,9 +10,10 @@ import (
 	"github.com/urfave/cli/v3"
 	"github.com/wutipong/immich-importer/config"
 	"github.com/wutipong/immich-importer/immich"
+	"github.com/wutipong/immich-importer/logging"
 )
 
-func Command(profile *string) *cli.Command {
+func Command(profile *string, displayLogLevel *string, fileLogLevel *string) *cli.Command {
 	pattern := ""
 	dryRun := false
 	album := ""
@@ -51,6 +52,12 @@ func Command(profile *string) *cli.Command {
 For example, to merge any albums with name begins with 'abc', use the pattern (without quote)'^abc.*$.
 See https://pkg.go.dev/regexp/syntax for information on patterns.`,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
+			err := logging.Setup(*profile, *displayLogLevel, true, *fileLogLevel)
+			if err != nil {
+				return fmt.Errorf("unable to setup log: %w", err)
+			}
+			defer logging.CleanUp()
+
 			c, err := config.LoadConfig(*profile)
 			if err != nil {
 				return fmt.Errorf(

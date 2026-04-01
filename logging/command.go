@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func Command(profile *string) *cli.Command {
+func Command(profile *string, displayLogLevel *string, fileLogLevel *string) *cli.Command {
 	return &cli.Command{
 		Name:  "log",
 		Usage: "Logging related commands ",
@@ -18,6 +18,12 @@ func Command(profile *string) *cli.Command {
 				Name:  "location",
 				Usage: "Show log files location.",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
+					err := Setup(*profile, *displayLogLevel, false, *fileLogLevel)
+					if err != nil {
+						return fmt.Errorf("unable to setup log: %w", err)
+					}
+					defer CleanUp()
+
 					path, err := CreateLogDirectoryPath()
 					if err != nil {
 						return err
@@ -30,6 +36,12 @@ func Command(profile *string) *cli.Command {
 				Name:  "latest",
 				Usage: "Show the latest log file location.",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
+					err := Setup(*profile, *displayLogLevel, false, *fileLogLevel)
+					if err != nil {
+						return fmt.Errorf("unable to setup log: %w", err)
+					}
+					defer CleanUp()
+
 					path, err := CreateLogDirectoryPath()
 					if err != nil {
 						return fmt.Errorf("unable to create log file path: %w", err)
