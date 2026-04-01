@@ -57,12 +57,16 @@ func main() {
 			archive.Command(&profile),
 			directory.Command(&profile),
 			merge.Command(&profile),
+			logging.Command(&profile),
 		},
 		Before: func(ctx context.Context, c *cli.Command) (ctx2 context.Context, err error) {
-			err = logging.Setup(displayLogLevelStr, fileLogLevelStr)
+
+			err = logging.Setup(profile, displayLogLevelStr, true, fileLogLevelStr)
 			if err != nil {
 				slog.Error("unable to setup logging system", slog.String("error", err.Error()))
 			}
+
+			slog.Info("command started", slog.Any("command", c))
 			return
 		}, After: func(ctx context.Context, c *cli.Command) error {
 			return logging.CleanUp()

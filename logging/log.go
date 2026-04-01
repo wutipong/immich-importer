@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -34,9 +35,12 @@ func ParseLogLevel(levelStr string) (level slog.Level, err error) {
 }
 
 var logFile *os.File
+var currentLogFilePath string
 
 func Setup(
+	profile string,
 	dispLogLevelStr string,
+	enableFileLog bool,
 	fileLogLevelStr string,
 ) error {
 	fileLevel, err := ParseLogLevel(fileLogLevelStr)
@@ -57,10 +61,19 @@ func Setup(
 		// AddSource:  true,
 	})
 
-	t := time.Now().Format("20060102_150405")
+	logLocation, err := CreateLogDirectoryPath()
+	if err != nil {
+		return fmt.Errorf("unable to create log file path: %w", err)
+	}
 
+	err = os.MkdirAll(logLocation, 0755)
+	if err != nil {
+		return fmt.Errorf("unable to create log directory: %w", err)
+	}
+
+	currentLogFilePath = filepath.Join(logLocation, CreateLogFileName(profile))
 	logFile, err = os.OpenFile(
-		fmt.Sprintf("immich-importer.%s.log", t),
+		currentLogFilePath,
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
 		0644,
 	)
@@ -91,4 +104,23 @@ func CleanUp() error {
 	}
 
 	return nil
+}
+
+func CreateLogDirectoryPath() (path string, err error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		slog.Error(
+			"failed to get user home directory",
+			slog.String("error", err.Error()),
+		)
+		return
+	}
+	path = filepath.Join(homeDir, ".immich-importer", "logs")
+
+	return
+}
+
+func CreateLogFileName(profile string) string {
+	t := time.Now().Format("20060102_150405")
+	return fmt.Sprintf("%s_%s.log", profile, t)
 }
