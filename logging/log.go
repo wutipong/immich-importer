@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -132,4 +133,31 @@ func CreateLogDirectoryPath() (path string, err error) {
 func CreateLogFileName(profile string) string {
 	t := time.Now().Format("20060102_150405")
 	return fmt.Sprintf("%s_%s.log", profile, t)
+}
+
+func GetLogFileList(profile string) (entries []os.DirEntry, err error) {
+	logDir, err := CreateLogDirectoryPath()
+	if err != nil {
+		return
+	}
+
+	entries, err = os.ReadDir(logDir)
+	if err != nil {
+		return
+	}
+
+	var filteredEntries []os.DirEntry
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), profile+"_") && strings.HasSuffix(entry.Name(), ".log") {
+			filteredEntries = append(filteredEntries, entry)
+		}
+	}
+
+	entries = filteredEntries
+
+	slices.SortFunc(entries, func(f1, f2 os.DirEntry) int {
+		return strings.Compare(f2.Name(), f1.Name())
+	})
+
+	return
 }

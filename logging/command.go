@@ -3,7 +3,6 @@ package logging
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/urfave/cli/v3"
@@ -42,40 +41,20 @@ func Command(profile *string, displayLogLevel *string, fileLogLevel *string) *cl
 					}
 					defer CleanUp()
 
-					path, err := CreateLogDirectoryPath()
+					entries, err := GetLogFileList(*profile)
 					if err != nil {
-						return fmt.Errorf("unable to create log file path: %w", err)
-					}
-
-					entries, err := os.ReadDir(path)
-					if err != nil {
-						return fmt.Errorf("unable to read log directory: %w", err)
+						return fmt.Errorf("unable to get log files: %w", err)
 					}
 
 					if len(entries) == 0 {
 						return fmt.Errorf("no log files found")
 					}
-
-					latest := entries[0]
-					latestInfo, err := latest.Info()
+					logDir, err := CreateLogDirectoryPath()
 					if err != nil {
-						return fmt.Errorf("unable to get log file info: %w", err)
-					}
-					for _, entry := range entries {
-						if entry.IsDir() {
-							continue
-						}
-						info, err := entry.Info()
-						if err != nil {
-							continue
-						}
-						if info.ModTime().After(latestInfo.ModTime()) {
-							latest = entry
-							latestInfo = info
-						}
+						return fmt.Errorf("unable to get log directory: %w", err)
 					}
 
-					println(filepath.Join(path, latest.Name()))
+					println(filepath.Join(logDir, entries[0].Name()))
 					return nil
 				},
 			},
