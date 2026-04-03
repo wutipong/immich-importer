@@ -10,9 +10,8 @@ import (
 
 	"github.com/lmittmann/tint"
 	"github.com/urfave/cli/v3"
-	"github.com/wutipong/immich-importer/archive"
+	"github.com/wutipong/immich-importer/backfill"
 	"github.com/wutipong/immich-importer/config"
-	"github.com/wutipong/immich-importer/directory"
 	"github.com/wutipong/immich-importer/logging"
 	"github.com/wutipong/immich-importer/merge"
 	"github.com/wutipong/immich-importer/run"
@@ -56,8 +55,7 @@ func main() {
 		Commands: []*cli.Command{
 			config.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
 			run.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
-			archive.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
-			directory.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
+			backfill.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
 			merge.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
 			logging.Command(&profile, &displayLogLevelStr, &fileLogLevelStr),
 			{
