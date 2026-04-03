@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
 	"runtime/debug"
 	"time"
 
@@ -92,7 +93,10 @@ func main() {
 		},
 	}
 
-	if err := cmd.Run(context.Background(), os.Args); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	if err := cmd.Run(ctx, os.Args); err != nil {
 		slog.Error("application ended with error", slog.String("error", err.Error()))
 		return
 	}

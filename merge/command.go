@@ -84,7 +84,7 @@ See https://pkg.go.dev/regexp/syntax for information on patterns.`,
 				DryRun: dryRun,
 			}
 
-			err = Process(server, album, pattern, !disableDelete)
+			err = Process(ctx, server, album, pattern, !disableDelete)
 			if err != nil {
 				return fmt.Errorf("failed to merge albums: %w", err)
 			}

@@ -2,6 +2,7 @@ package immich
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"hash/fnv"
 	"io"
@@ -17,12 +18,17 @@ import (
 )
 
 func PostAsset(
+	ctx context.Context,
 	server ServerConfig,
 	archivePath string,
 	path string,
 	reader io.Reader,
 	modDate time.Time,
 ) (result AssetMediaResponseDto, err error) {
+	if ctx.Err() != nil {
+		err = fmt.Errorf("context error: %w", ctx.Err())
+		return
+	}
 	if server.DryRun {
 		slog.Debug(
 			"Dry run: skipping asset upload",
@@ -64,7 +70,7 @@ func PostAsset(
 	_ = writer.Close()
 
 	return DoRequestWithReturnObject[AssetMediaResponseDto](
-		"POST", server, "/api/assets", &body, writer.FormDataContentType(),
+		ctx, "POST", server, "/api/assets", &body, writer.FormDataContentType(),
 	)
 }
 

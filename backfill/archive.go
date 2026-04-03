@@ -2,6 +2,7 @@ package backfill
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -13,12 +14,20 @@ import (
 	"github.com/wutipong/immich-importer/logging"
 )
 
-func backfillArchive(ctx context.Context, profile, displayLogLevel, fileLogLevel string, sourceDir, archivePath string, dryRun bool) error {
+func backfillArchive(
+	ctx context.Context, profile, displayLogLevel, fileLogLevel string,
+	sourceDir, archivePath string,
+	dryRun bool,
+) error {
 	err := logging.Setup(profile, displayLogLevel, true, fileLogLevel)
 	if err != nil {
 		return fmt.Errorf("unable to setup log: %w", err)
 	}
 	defer logging.CleanUp()
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
 
 	c, err := config.LoadConfig(profile)
 	if err != nil {
@@ -46,17 +55,23 @@ func backfillArchive(ctx context.Context, profile, displayLogLevel, fileLogLevel
 		DryRun: dryRun,
 	}
 
-	assetIds, err := archive.Process(server, sourceDir, archivePath)
+	assetIds, err := archive.Process(ctx, server, sourceDir, archivePath)
 	if err != nil {
 		slog.Error(
 			"failed upload assets.",
 			slog.String("error", err.Error()),
+			slog.String("sourceDir", sourceDir),
+			slog.String("archivePath", archivePath),
 		)
+		if errors.Is(err, context.Canceled) {
+			return err
+		}
 		return nil
 	}
 
 	slog.Info("creating album", slog.String("name", archivePath))
 	createdAlbum, err := immich.CreateAlbum(
+		ctx,
 		server, archivePath, assetIds,
 	)
 	if err != nil {
