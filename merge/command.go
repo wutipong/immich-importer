@@ -58,6 +58,15 @@ See https://pkg.go.dev/regexp/syntax for information on patterns.`,
 			}
 			defer logging.CleanUp()
 
+			slog.Info("start command",
+				slog.String("command", cmd.Name),
+				slog.String("profile", *profile),
+				slog.String("album", album),
+				slog.String("pattern", pattern),
+				slog.Bool("disableDelete", disableDelete),
+				slog.Bool("dryRun", dryRun),
+			)
+
 			c, err := config.LoadConfig(*profile)
 			if err != nil {
 				return fmt.Errorf(

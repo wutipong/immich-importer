@@ -29,6 +29,14 @@ func backfillArchive(
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
 
+	slog.Info("start command",
+		slog.String("command", "backfill archive"),
+		slog.String("profile", profile),
+		slog.String("sourceDir", sourceDir),
+		slog.String("archivePath", archivePath),
+		slog.Bool("dryRun", dryRun),
+	)
+
 	c, err := config.LoadConfig(profile)
 	if err != nil {
 		return fmt.Errorf(

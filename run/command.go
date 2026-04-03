@@ -72,6 +72,16 @@ func Command(profile *string, displayLogLevel *string, fileLogLevel *string) *cl
 			}
 			defer logging.CleanUp()
 
+			slog.Info("start command",
+				slog.String("command", cmd.Name),
+				slog.String("profile", *profile),
+				slog.String("sourceDir", sourceDir),
+				slog.Bool("force", force),
+				slog.Bool("dryRun", dryRun),
+				slog.Bool("disableDirectory", disableDirectory),
+				slog.Bool("disableArchive", disableArchive),
+			)
+
 			c, err := config.LoadConfig(*profile)
 			if err != nil {
 				return fmt.Errorf(

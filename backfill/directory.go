@@ -28,6 +28,14 @@ func backfillDirectory(
 	}
 	defer logging.CleanUp()
 
+	slog.Info("start command",
+		slog.String("command", "backfill directory"),
+		slog.String("profile", profile),
+		slog.String("sourceDir", sourceDir),
+		slog.String("inputDir", inputDir),
+		slog.Bool("dryRun", dryRun),
+	)
+
 	if ctx.Err() != nil {
 		err = fmt.Errorf("context error: %w", ctx.Err())
 		return err
