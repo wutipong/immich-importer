@@ -2,6 +2,7 @@ package backfill
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -67,7 +68,12 @@ func backfillDirectory(
 		slog.Error(
 			"failed upload assets.",
 			slog.String("error", err.Error()),
+			slog.String("sourceDir", sourceDir),
+			slog.String("inputDir", inputDir),
 		)
+		if errors.Is(err, context.Canceled) {
+			return err
+		}
 		return nil
 	}
 
@@ -129,7 +135,12 @@ func backfillDirectory(
 			slog.Error(
 				"failed upload assets.",
 				slog.String("error", err.Error()),
+				slog.String("sourceDir", sourceDir),
+				slog.String("albumPath", albumPath),
 			)
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
 			return nil
 		}
 

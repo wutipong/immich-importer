@@ -2,6 +2,7 @@ package backfill
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -59,7 +60,12 @@ func backfillArchive(
 		slog.Error(
 			"failed upload assets.",
 			slog.String("error", err.Error()),
+			slog.String("sourceDir", sourceDir),
+			slog.String("archivePath", archivePath),
 		)
+		if errors.Is(err, context.Canceled) {
+			return err
+		}
 		return nil
 	}
 

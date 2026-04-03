@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -199,7 +200,12 @@ func Process(
 				slog.Error(
 					"failed upload assets.",
 					slog.String("error", err.Error()),
+					slog.String("sourceDir", sourceDir),
+					slog.String("albumPath", albumPath),
 				)
+				if errors.Is(err, context.Canceled) {
+					return err
+				}
 				return nil
 			}
 
