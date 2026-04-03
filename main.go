@@ -72,6 +72,22 @@ func main() {
 					fmt.Printf("immich-importer version: %s\n", version)
 					return nil
 				},
+			}, {
+				Name:   "archive",
+				Usage:  "(OBSOLETED) Import assets from archive file in an archive.",
+				Hidden: true,
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					fmt.Println("Obsoleted command. Please use 'backfill archive' command instead.")
+					return nil
+				},
+			}, {
+				Name:   "directory",
+				Usage:  "(OBSOLETED) Import assets from subdirectories in a directory.",
+				Hidden: true,
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					fmt.Println("Obsoleted command. Please use 'backfill directory' command instead.")
+					return nil
+				},
 			},
 		},
 	}
