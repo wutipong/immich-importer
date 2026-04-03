@@ -7,10 +7,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
+	"github.com/wutipong/immich-importer/archive"
 	"github.com/wutipong/immich-importer/config"
+	"github.com/wutipong/immich-importer/directory"
 	"github.com/wutipong/immich-importer/immich"
 	"github.com/wutipong/immich-importer/logging"
 )
@@ -52,77 +53,102 @@ func backfillDirectory(
 		DryRun: dryRun,
 	}
 
-	slog.Debug("processing directory",
+	slog.Debug("processing path",
 		slog.String("sourceDir", sourceDir),
-		slog.String("path", inputDir),
+		slog.String("inputDir", inputDir),
 	)
-	entries, err := os.ReadDir(filepath.Join(sourceDir, inputDir))
+	assetIds, err := directory.Process(server, sourceDir, inputDir)
 	if err != nil {
-		return fmt.Errorf("failed to read directory: %w", err)
+		slog.Error(
+			"failed upload assets.",
+			slog.String("error", err.Error()),
+		)
+		return nil
 	}
 
-	slog.Debug("directory entries", slog.Any("size", len(entries)))
-
-	files := slices.DeleteFunc(
-		entries,
-		func(d os.DirEntry) bool {
-			if d.IsDir() {
-				return true
-			}
-			if !immich.IsMediaFile(d.Name()) {
-				return true
-			}
-			return false
-		},
-	)
-
-	slog.Debug("media files", slog.Any("size", len(files)))
-
-	for _, file := range files {
-		slog.Info(
-			"creating asset",
-			slog.String("path", inputDir),
-			slog.String("entry", file.Name()),
-		)
-
-		info, e := file.Info()
-		if e != nil {
-			return fmt.Errorf(
-				"Unable to read image file propery: %s: %w",
-				file.Name(),
-				e,
-			)
-		}
-
-		reader, e := os.Open(filepath.Join(sourceDir, inputDir, file.Name()))
-		if e != nil {
-			return fmt.Errorf(
-				"failed to open image file %s: %w",
-				file.Name(),
-				e,
-			)
-		}
-
-		defer reader.Close()
-
-		asset, err := immich.PostAsset(
-			server,
-			inputDir,
-			file.Name(),
-			reader,
-			info.ModTime(),
+	if len(assetIds) > 0 {
+		slog.Info("creating album", slog.String("name", inputDir))
+		createdAlbum, err := immich.CreateAlbum(
+			server, inputDir, assetIds,
 		)
 		if err != nil {
-			slog.Error("failed to upload asset",
-				slog.String("album", inputDir),
-				slog.String("entry", file.Name()),
-				slog.String("error", err.Error()),
-			)
-			continue
+			slog.Error("failed to create album", slog.String("error", err.Error()))
+			return nil
 		}
 
-		slog.Info("uploaded asset", slog.Any("asset", asset))
+		slog.Info("created album", slog.Any("album", createdAlbum))
+	} else {
+		slog.Warn("directory does not contain any media files. Walking sub-directory next.")
 	}
+
+	err = filepath.WalkDir(filepath.Join(sourceDir, inputDir), func(path string, d os.DirEntry, err error,
+	) error {
+		if err != nil {
+			slog.Warn(
+				"failed to access path. skipping.",
+				slog.String("path", path),
+				slog.String("error", err.Error()),
+			)
+			return nil
+		}
+
+		slog.Debug("processing path",
+			slog.String("path", path),
+			slog.String("sourceDir", sourceDir),
+			slog.String("inputDir", inputDir),
+		)
+
+		var assetIds []string
+
+		albumPath, err := filepath.Rel(sourceDir, path)
+		if err != nil {
+			slog.Error(
+				"failed to determine album name.",
+				slog.String("error", err.Error()),
+			)
+			return nil
+		}
+
+		slog.Debug("processing path",
+			slog.String("path", path),
+			slog.String("albumPath", albumPath),
+		)
+
+		if d.IsDir() {
+			assetIds, err = directory.Process(server, sourceDir, albumPath)
+		} else {
+			assetIds, err = archive.Process(server, sourceDir, albumPath)
+		}
+
+		if err != nil {
+			slog.Error(
+				"failed upload assets.",
+				slog.String("error", err.Error()),
+			)
+			return nil
+		}
+
+		if len(assetIds) == 0 {
+			slog.Debug(
+				"no assets uploaded. skip create album.",
+				slog.String("name", albumPath),
+			)
+			return nil
+		}
+
+		slog.Info("creating album", slog.String("name", albumPath))
+		createdAlbum, err := immich.CreateAlbum(
+			server, albumPath, assetIds,
+		)
+		if err != nil {
+			slog.Error("failed to create album", slog.String("error", err.Error()))
+			return nil
+		}
+
+		slog.Info("created album", slog.Any("album", createdAlbum))
+
+		return nil
+	})
 
 	return nil
 }
