@@ -1,6 +1,7 @@
 package directory
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,6 +12,7 @@ import (
 )
 
 func Process(
+	ctx context.Context,
 	server immich.ServerConfig,
 	sourceDir string,
 	path string,
@@ -18,7 +20,10 @@ func Process(
 	assetIds []string,
 	err error,
 ) {
-
+	if ctx.Err() != nil {
+		err = fmt.Errorf("context error: %w", ctx.Err())
+		return
+	}
 	slog.Debug("processing directory",
 		slog.String("sourceDir", sourceDir),
 		slog.String("path", path),
@@ -76,6 +81,7 @@ func Process(
 		defer reader.Close()
 
 		asset, err := immich.PostAsset(
+			ctx,
 			server,
 			path,
 			file.Name(),

@@ -1,6 +1,7 @@
 package merge
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -10,6 +11,7 @@ import (
 )
 
 func Process(
+	ctx context.Context,
 	server immich.ServerConfig,
 	album string,
 	pattern string,
@@ -20,7 +22,7 @@ func Process(
 		return fmt.Errorf("invalid regex pattern: %w", err)
 	}
 
-	albums, err := immich.GetAlbums(server)
+	albums, err := immich.GetAlbums(ctx, server)
 	if err != nil {
 		return fmt.Errorf("unable to retrive albums: %w", err)
 	}
@@ -38,7 +40,7 @@ func Process(
 	assetIdSet := make(map[string]bool)
 	for _, album := range albums {
 
-		details, err := immich.GetAlbum(server, album.ID)
+		details, err := immich.GetAlbum(ctx, server, album.ID)
 		if err != nil {
 			slog.Error("unable to retrieve album information",
 				slog.String("error", err.Error()))
@@ -55,7 +57,7 @@ func Process(
 
 	slog.Info("creating album", slog.String("name", album))
 	createdAlbum, err := immich.CreateAlbum(
-		server, album, assetIds,
+		ctx, server, album, assetIds,
 	)
 
 	if err != nil {
@@ -64,7 +66,7 @@ func Process(
 
 	if isDeletingAlbums {
 		for _, album := range albums {
-			err := immich.DeleteAlbum(server, album.ID)
+			err := immich.DeleteAlbum(ctx, server, album.ID)
 			if err != nil {
 				slog.Warn("unable to delete album", slog.String("id", err.Error()))
 			}

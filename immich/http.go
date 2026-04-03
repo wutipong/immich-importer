@@ -2,13 +2,16 @@ package immich
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 )
 
-func Post[R any](server ServerConfig, path string, data any) (result R, err error) {
+func Post[R any](
+	ctx context.Context, server ServerConfig, path string, data any,
+) (result R, err error) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return result, err
@@ -16,17 +19,20 @@ func Post[R any](server ServerConfig, path string, data any) (result R, err erro
 
 	body := bytes.NewBuffer(jsonData)
 
-	return DoRequestWithReturnObject[R]("POST", server, path, body, "application/json")
+	return DoRequestWithReturnObject[R](
+		ctx, "POST", server, path, body, "application/json",
+	)
 }
 
 func DoRequestWithReturnObject[R any](
+	ctx context.Context,
 	method string,
 	server ServerConfig,
 	path string,
 	body io.Reader,
 	contentType string,
 ) (result R, err error) {
-	resp, err := DoRequest(method, server, path, body, contentType)
+	resp, err := DoRequest(ctx, method, server, path, body, contentType)
 	if err != nil {
 		return
 	}
@@ -55,13 +61,16 @@ func DoRequestWithReturnObject[R any](
 }
 
 func DoRequest(
+	ctx context.Context,
 	method string,
 	server ServerConfig,
 	path string,
 	body io.Reader,
 	contentType string,
 ) (resp *http.Response, err error) {
-	req, err := http.NewRequest(method, server.URL.JoinPath(path).String(), body)
+	req, err := http.NewRequestWithContext(
+		ctx, method, server.URL.JoinPath(path).String(), body,
+	)
 	if err != nil {
 		return
 	}
@@ -74,17 +83,22 @@ func DoRequest(
 	return http.DefaultClient.Do(req)
 }
 
-func Get[R any](server ServerConfig, path string) (result R, err error) {
-	return DoRequestWithReturnObject[R]("GET", server, path, nil, "")
+func Get[R any](
+	ctx context.Context, server ServerConfig, path string,
+) (result R, err error) {
+	return DoRequestWithReturnObject[R](ctx, "GET", server, path, nil, "")
 }
 
-func Put[R any](server ServerConfig, path string, request any) (result R, err error) {
+func Put[R any](
+	ctx context.Context, server ServerConfig, path string, request any,
+) (result R, err error) {
 	body, err := json.Marshal(request)
 	if err != nil {
 		return
 	}
 
 	return DoRequestWithReturnObject[R](
+		ctx,
 		"PUT",
 		server,
 		path,

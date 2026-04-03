@@ -18,6 +18,7 @@ import (
 )
 
 func Process(
+	ctx context.Context,
 	server immich.ServerConfig,
 	sourceDir string,
 	albumPath string,
@@ -38,7 +39,7 @@ func Process(
 	}
 	defer archiveFile.Close()
 
-	assetIds, err = WalkArchive(server, albumPath, archiveFile)
+	assetIds, err = WalkArchive(ctx, server, albumPath, archiveFile)
 
 	return
 }
@@ -54,11 +55,15 @@ var archiveExtensions = []string{
 }
 
 func WalkArchive(
+	ctx context.Context,
 	server immich.ServerConfig,
 	archivePath string,
 	archive io.Reader,
 ) (assetIds []string, err error) {
-	ctx := context.Background()
+	if ctx.Err() != nil {
+		err = fmt.Errorf("context error: %w", ctx.Err())
+		return
+	}
 
 	format, stream, err := archives.Identify(ctx, archivePath, archive)
 	if err != nil {
@@ -76,6 +81,11 @@ func WalkArchive(
 	err = extractor.Extract(
 		ctx, stream,
 		func(ctx context.Context, f archives.FileInfo) error {
+			if ctx.Err() != nil {
+				err = fmt.Errorf("context error: %w", ctx.Err())
+				return err
+			}
+
 			if f.IsDir() {
 				return nil
 			}
@@ -132,7 +142,9 @@ func WalkArchive(
 
 				reader := bytes.NewReader(buffer.Bytes())
 
-				nestedAssetIds, err := WalkArchive(server, filepath.Join(archivePath, filename), reader)
+				nestedAssetIds, err := WalkArchive(
+					ctx, server, filepath.Join(archivePath, filename), reader,
+				)
 				if err != nil {
 					return fmt.Errorf("failed to process nested archive %s: %w", filename, err)
 				}
@@ -141,7 +153,7 @@ func WalkArchive(
 			}
 
 			if immich.IsMediaFile(f.NameInArchive) {
-				asset, err := uploadAsset(server, archivePath, filename, f)
+				asset, err := uploadAsset(ctx, server, archivePath, filename, f)
 				if err != nil {
 					return err
 				}
@@ -159,11 +171,17 @@ func WalkArchive(
 }
 
 func uploadAsset(
+	ctx context.Context,
 	server immich.ServerConfig,
 	archivePath string,
 	filename string,
 	f archives.FileInfo,
 ) (asset immich.AssetMediaResponseDto, err error) {
+	if ctx.Err() != nil {
+		err = fmt.Errorf("context error: %w", ctx.Err())
+		return
+	}
+
 	slog.Info(
 		"creating asset",
 		slog.String("archive", archivePath),
@@ -179,6 +197,7 @@ func uploadAsset(
 	defer file.Close()
 
 	asset, err = immich.PostAsset(
+		ctx,
 		server,
 		archivePath,
 		filename,

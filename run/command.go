@@ -98,6 +98,7 @@ func Command(profile *string, displayLogLevel *string, fileLogLevel *string) *cl
 			}
 
 			return Process(
+				ctx,
 				server,
 				sourceDir,
 				force,
@@ -109,6 +110,7 @@ func Command(profile *string, displayLogLevel *string, fileLogLevel *string) *cl
 }
 
 func Process(
+	ctx context.Context,
 	server immich.ServerConfig,
 	sourceDir string,
 	force bool,
@@ -120,7 +122,7 @@ func Process(
 	var err error
 
 	if !force {
-		albums, err = immich.GetAlbums(server)
+		albums, err = immich.GetAlbums(ctx, server)
 		if err != nil {
 			err = fmt.Errorf("unable to retrieved existing albums: %w", err)
 			return err
@@ -181,7 +183,7 @@ func Process(
 					)
 					return nil
 				}
-				assetIds, err = directory.Process(server, sourceDir, albumPath)
+				assetIds, err = directory.Process(ctx, server, sourceDir, albumPath)
 			} else {
 				if !processArchive {
 					slog.Debug("skipping file",
@@ -190,7 +192,7 @@ func Process(
 					return nil
 				}
 
-				assetIds, err = archive.Process(server, sourceDir, albumPath)
+				assetIds, err = archive.Process(ctx, server, sourceDir, albumPath)
 			}
 
 			if err != nil {
@@ -220,7 +222,7 @@ func Process(
 					albumIds = append(albumIds, album.ID)
 				}
 
-				err = immich.AddAssetsToAlbum(server, albumIds, assetIds)
+				err = immich.AddAssetsToAlbum(ctx, server, albumIds, assetIds)
 				if err != nil {
 					slog.Error(
 						"failed to add assets to album",
@@ -232,7 +234,7 @@ func Process(
 
 			slog.Info("creating album", slog.String("name", albumPath))
 			createdAlbum, err := immich.CreateAlbum(
-				server, albumPath, assetIds,
+				ctx, server, albumPath, assetIds,
 			)
 			if err != nil {
 				slog.Error("failed to create album", slog.String("error", err.Error()))

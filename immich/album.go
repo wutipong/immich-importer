@@ -1,6 +1,7 @@
 package immich
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"path"
@@ -8,35 +9,49 @@ import (
 	"github.com/google/uuid"
 )
 
-func GetAlbums(server ServerConfig) (
+func GetAlbums(ctx context.Context, server ServerConfig) (
 	albums []AlbumResponseDto,
 	err error,
 ) {
+	if ctx.Err() != nil {
+		err = fmt.Errorf("context error: %w", ctx.Err())
+		return
+	}
+
 	if server.DryRun {
 		slog.Debug("Dry run: return empty album list")
 		return []AlbumResponseDto{}, nil
 	}
-	return Get[[]AlbumResponseDto](server, "/api/albums")
+	return Get[[]AlbumResponseDto](ctx, server, "/api/albums")
 }
 
-func GetAlbum(server ServerConfig, id string) (
+func GetAlbum(ctx context.Context, server ServerConfig, id string) (
 	album AlbumResponseDto,
 	err error,
 ) {
+	if ctx.Err() != nil {
+		err = fmt.Errorf("context error: %w", ctx.Err())
+		return
+	}
+
 	if server.DryRun {
 		slog.Debug("Dry run: return empty album list")
 		return AlbumResponseDto{}, nil
 	}
-	return Get[AlbumResponseDto](server, path.Join("/api/albums", id))
+	return Get[AlbumResponseDto](ctx, server, path.Join("/api/albums", id))
 }
 
-func DeleteEmptyAlbums(server ServerConfig) error {
+func DeleteEmptyAlbums(ctx context.Context, server ServerConfig) error {
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	if server.DryRun {
 		slog.Debug("Dry run: skipping empty album deletion")
 		return nil
 	}
 
-	albums, err := GetAlbums(server)
+	albums, err := GetAlbums(ctx, server)
 	if err != nil {
 		return fmt.Errorf("failed to get albums: %w", err)
 	}
@@ -51,7 +66,7 @@ func DeleteEmptyAlbums(server ServerConfig) error {
 			slog.String("name", album.AlbumName),
 			slog.String("id", album.ID),
 		)
-		err = DeleteAlbum(server, album.ID)
+		err = DeleteAlbum(ctx, server, album.ID)
 		if err != nil {
 			return fmt.Errorf("failed to delete album '%s': %w",
 				album.AlbumName, err)
@@ -60,7 +75,11 @@ func DeleteEmptyAlbums(server ServerConfig) error {
 	return nil
 }
 
-func DeleteAlbum(server ServerConfig, id string) error {
+func DeleteAlbum(ctx context.Context, server ServerConfig, id string) error {
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	if server.DryRun {
 		slog.Debug("Dry run: skipping album deletion",
 			slog.String("id", id),
@@ -69,7 +88,7 @@ func DeleteAlbum(server ServerConfig, id string) error {
 	}
 
 	resp, err := DoRequest(
-		"DELETE", server, path.Join("api", "albums", id), nil, "")
+		ctx, "DELETE", server, path.Join("api", "albums", id), nil, "")
 	if err != nil {
 		return err
 	}
@@ -84,10 +103,15 @@ func DeleteAlbum(server ServerConfig, id string) error {
 	return nil
 }
 
-func CreateAlbum(server ServerConfig, albumName string, assetIds []string) (
+func CreateAlbum(ctx context.Context, server ServerConfig, albumName string, assetIds []string) (
 	album CreateAlbumDto,
 	err error,
 ) {
+	if ctx.Err() != nil {
+		err = fmt.Errorf("context error: %w", ctx.Err())
+		return
+	}
+
 	if server.DryRun {
 		slog.Debug("Dry run: return fake album",
 			slog.String("name", albumName),
@@ -102,6 +126,7 @@ func CreateAlbum(server ServerConfig, albumName string, assetIds []string) (
 	}
 
 	return Post[CreateAlbumDto](
+		ctx,
 		server,
 		"/api/albums",
 		CreateAlbumRequest{
@@ -111,7 +136,11 @@ func CreateAlbum(server ServerConfig, albumName string, assetIds []string) (
 	)
 }
 
-func AddAssetsToAlbum(server ServerConfig, albumIds []string, assetIds []string) error {
+func AddAssetsToAlbum(ctx context.Context, server ServerConfig, albumIds []string, assetIds []string) error {
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	if server.DryRun {
 		slog.Debug("Dry run: skipping adding assets to album",
 			slog.Any("albumIds", albumIds),
@@ -121,6 +150,7 @@ func AddAssetsToAlbum(server ServerConfig, albumIds []string, assetIds []string)
 	}
 
 	resp, err := Post[AddAssetsToAlbumResponse](
+		ctx,
 		server,
 		path.Join("api", "albums", "assets"),
 		AddAssetsToAlbumRequest{

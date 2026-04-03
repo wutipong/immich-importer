@@ -27,6 +27,11 @@ func backfillDirectory(
 	}
 	defer logging.CleanUp()
 
+	if ctx.Err() != nil {
+		err = fmt.Errorf("context error: %w", ctx.Err())
+		return err
+	}
+
 	c, err := config.LoadConfig(profile)
 	if err != nil {
 		return fmt.Errorf(
@@ -57,7 +62,7 @@ func backfillDirectory(
 		slog.String("sourceDir", sourceDir),
 		slog.String("inputDir", inputDir),
 	)
-	assetIds, err := directory.Process(server, sourceDir, inputDir)
+	assetIds, err := directory.Process(ctx, server, sourceDir, inputDir)
 	if err != nil {
 		slog.Error(
 			"failed upload assets.",
@@ -69,7 +74,7 @@ func backfillDirectory(
 	if len(assetIds) > 0 {
 		slog.Info("creating album", slog.String("name", inputDir))
 		createdAlbum, err := immich.CreateAlbum(
-			server, inputDir, assetIds,
+			ctx, server, inputDir, assetIds,
 		)
 		if err != nil {
 			slog.Error("failed to create album", slog.String("error", err.Error()))
@@ -115,9 +120,9 @@ func backfillDirectory(
 		)
 
 		if d.IsDir() {
-			assetIds, err = directory.Process(server, sourceDir, albumPath)
+			assetIds, err = directory.Process(ctx, server, sourceDir, albumPath)
 		} else {
-			assetIds, err = archive.Process(server, sourceDir, albumPath)
+			assetIds, err = archive.Process(ctx, server, sourceDir, albumPath)
 		}
 
 		if err != nil {
@@ -138,7 +143,7 @@ func backfillDirectory(
 
 		slog.Info("creating album", slog.String("name", albumPath))
 		createdAlbum, err := immich.CreateAlbum(
-			server, albumPath, assetIds,
+			ctx, server, albumPath, assetIds,
 		)
 		if err != nil {
 			slog.Error("failed to create album", slog.String("error", err.Error()))
